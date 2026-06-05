@@ -6,7 +6,7 @@ export interface PlaybackState {
   duration: number;
 }
 
-export function useAudioPlayer() {
+export function useAudioPlayer(onEnded?: () => void) {
   const [state, setState] = useState<PlaybackState>({
     isPlaying: false,
     currentTime: 0,
@@ -15,6 +15,11 @@ export function useAudioPlayer() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const onEndedRef = useRef(onEnded);
+
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  }, [onEnded]);
 
   const loadAudio = useCallback((url: string) => {
     if (audioRef.current) {
@@ -30,10 +35,12 @@ export function useAudioPlayer() {
     });
 
     audio.addEventListener("ended", () => {
-      setState((prev) => ({ ...prev, isPlaying: false, currentTime: 0 }));
+      setState({ isPlaying: false, currentTime: 0, duration: audio.duration });
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
+      onEndedRef.current?.();
     });
 
     audio.addEventListener("timeupdate", () => {
@@ -65,6 +72,7 @@ export function useAudioPlayer() {
       setState((prev) => ({ ...prev, isPlaying: false }));
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
     }
   }, []);
@@ -76,6 +84,7 @@ export function useAudioPlayer() {
       setState({ isPlaying: false, currentTime: 0, duration: 0 });
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
     }
   }, []);

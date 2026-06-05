@@ -19,12 +19,9 @@ export default function SelfTest() {
     selectedScene,
     selectedSentence,
     setSelectedScene,
-    setSelectedSentence,
     bpm,
     setBpm,
   } = useAppStore();
-
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [currentChunkIndex, setCurrentChunkIndex] = useState(-1);
   const [tapRecords, setTapRecords] = useState<TapRecord[]>([]);
@@ -51,7 +48,6 @@ export default function SelfTest() {
     if (!selectedSentence) return;
 
     setIsTesting(true);
-    setIsPlaying(true);
     setCurrentChunkIndex(-1);
     setTapRecords([]);
     setShowResults(false);
@@ -69,7 +65,6 @@ export default function SelfTest() {
     });
 
     timeoutRef.current = setTimeout(() => {
-      setIsPlaying(false);
       setIsTesting(false);
       setCurrentChunkIndex(-1);
       setShowResults(true);
@@ -78,7 +73,6 @@ export default function SelfTest() {
 
   const stopTest = useCallback(() => {
     setIsTesting(false);
-    setIsPlaying(false);
     setCurrentChunkIndex(-1);
     setShowResults(false);
     if (timeoutRef.current) {

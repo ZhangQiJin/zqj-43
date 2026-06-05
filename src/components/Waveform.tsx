@@ -1,5 +1,4 @@
 import { useRef, useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
 import { ZoomIn, ZoomOut, Move, Maximize2 } from "lucide-react";
 import { Chunk } from "@/data/scenes";
 
@@ -8,7 +7,7 @@ interface WaveformProps {
   chunks: Chunk[];
   currentTime: number;
   duration: number;
-  isPlaying: boolean;
+  isPlaying?: boolean;
   onSeek?: (time: number) => void;
 }
 
@@ -17,7 +16,6 @@ export default function Waveform({
   chunks,
   currentTime,
   duration,
-  isPlaying,
   onSeek,
 }: WaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -65,8 +63,8 @@ export default function Waveform({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = canvasWidth;
+    const height = canvasHeight;
     const centerY = height / 2;
 
     ctx.clearRect(0, 0, width, height);
@@ -81,10 +79,6 @@ export default function Waveform({
       ctx.stroke();
     }
 
-    const visibleStart = offset / zoom;
-    const visibleEnd = (offset + width) / zoom;
-    const visibleRange = visibleEnd - visibleStart;
-
     const drawWave = (
       data: number[],
       color: string,
@@ -94,6 +88,8 @@ export default function Waveform({
       if (data.length === 0) return;
 
       const normalized = normalizeWaveform(data, Math.floor(width * zoom));
+      const visibleStart = offset / zoom;
+      const visibleEnd = (offset + width) / zoom;
       const startIdx = Math.floor(visibleStart * normalized.length / (width * zoom));
       const endIdx = Math.ceil(visibleEnd * normalized.length / (width * zoom));
 
@@ -185,7 +181,7 @@ export default function Waveform({
         ctx.fill();
       }
     }
-  }, [userWaveform, chunks, currentTime, duration, zoom, offset, referenceWaveform, totalDuration]);
+  }, [userWaveform, chunks, currentTime, duration, zoom, offset, referenceWaveform, totalDuration, canvasWidth, canvasHeight]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -203,11 +199,13 @@ export default function Waveform({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
-      canvas.width = canvasWidth * window.devicePixelRatio;
-      canvas.height = canvasHeight * window.devicePixelRatio;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvasWidth * dpr;
+      canvas.height = canvasHeight * dpr;
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
       }
     }
   }, [canvasWidth, canvasHeight]);
@@ -339,8 +337,6 @@ export default function Waveform({
       >
         <canvas
           ref={canvasRef}
-          width={canvasWidth}
-          height={canvasHeight}
           onClick={handleCanvasClick}
           className="block"
           style={{ width: canvasWidth, height: canvasHeight }}

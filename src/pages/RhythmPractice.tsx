@@ -33,7 +33,19 @@ export default function RhythmPractice() {
   const playbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const recorder = useAudioRecorder();
-  const player = useAudioPlayer();
+
+  const handlePlaybackEnded = useCallback(() => {
+    setIsPlayingRecording(false);
+    setRecordingPlaybackTime(0);
+    setLocalChunkIndex(-1);
+    setCurrentChunkIndex(-1);
+    if (playbackIntervalRef.current) {
+      clearInterval(playbackIntervalRef.current);
+      playbackIntervalRef.current = null;
+    }
+  }, [setIsPlayingRecording, setRecordingPlaybackTime, setCurrentChunkIndex]);
+
+  const player = useAudioPlayer(handlePlaybackEnded);
 
   const currentSentenceIndex = selectedScene.sentences.findIndex(
     (s) => s.id === selectedSentence?.id
@@ -88,19 +100,27 @@ export default function RhythmPractice() {
     setCurrentChunkIndex(-1);
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
   }, [setCurrentChunkIndex]);
 
   const handleStartRecording = useCallback(() => {
     stopAnimation();
+    if (isPlayingRecording) {
+      handlePlaybackEnded();
+      player.stop();
+    }
     recorder.startRecording();
-  }, [recorder, stopAnimation]);
+  }, [recorder, stopAnimation, isPlayingRecording, handlePlaybackEnded, player]);
 
   const handleStopRecording = useCallback(() => {
     recorder.stopRecording();
   }, [recorder]);
 
   const handleResetRecording = useCallback(() => {
+    if (recorder.isRecording) {
+      recorder.stopRecording();
+    }
     player.stop();
     recorder.resetRecording();
     setIsPlayingRecording(false);
@@ -109,8 +129,9 @@ export default function RhythmPractice() {
     setCurrentChunkIndex(-1);
     if (playbackIntervalRef.current) {
       clearInterval(playbackIntervalRef.current);
+      playbackIntervalRef.current = null;
     }
-  }, [player, recorder, setIsPlayingRecording, setRecordingPlaybackTime, setCurrentChunkIndex]);
+  }, [recorder, player, setIsPlayingRecording, setRecordingPlaybackTime, setCurrentChunkIndex]);
 
   const handlePlayRecording = useCallback(() => {
     if (!recorder.audioUrl) return;
@@ -122,6 +143,10 @@ export default function RhythmPractice() {
     player.play();
     setIsPlayingRecording(true);
     setIsPlaying(false);
+
+    if (playbackIntervalRef.current) {
+      clearInterval(playbackIntervalRef.current);
+    }
 
     playbackIntervalRef.current = setInterval(() => {
       const currentTime = player.currentTime * 1000;
@@ -140,6 +165,7 @@ export default function RhythmPractice() {
     setIsPlayingRecording(false);
     if (playbackIntervalRef.current) {
       clearInterval(playbackIntervalRef.current);
+      playbackIntervalRef.current = null;
     }
   }, [player, setIsPlayingRecording]);
 
@@ -162,16 +188,61 @@ export default function RhythmPractice() {
     }
   }, [recorder.audioUrl, player]);
 
-  useEffect(() => {
-    if (isPlayingRecording && player.currentTime >= player.duration && player.duration > 0) {
-      setIsPlayingRecording(false);
-      setLocalChunkIndex(-1);
-      setCurrentChunkIndex(-1);
-      if (playbackIntervalRef.current) {
-        clearInterval(playbackIntervalRef.current);
-      }
+  const handleSwitchMode = useCallback((mode: boolean) => {
+    if (recorder.isRecording) {
+      recorder.stopRecording();
     }
-  }, [player.currentTime, player.duration, isPlayingRecording, setIsPlayingRecording, setCurrentChunkIndex]);
+    if (isPlayingRecording) {
+      handlePlaybackEnded();
+      player.stop();
+    }
+    stopAnimation();
+    setIsRecordingMode(mode);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, setIsRecordingMode]);
+
+  const handleSwitchScene = useCallback((sceneId: string) => {
+    if (recorder.isRecording) {
+      recorder.stopRecording();
+    }
+    if (isPlayingRecording) {
+      handlePlaybackEnded();
+      player.stop();
+    }
+    stopAnimation();
+    handleResetRecording();
+    setSelectedScene(sceneId);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, setSelectedScene]);
+
+  const handlePrevSentence = useCallback(() => {
+    if (recorder.isRecording) {
+      recorder.stopRecording();
+    }
+    if (isPlayingRecording) {
+      handlePlaybackEnded();
+      player.stop();
+    }
+    stopAnimation();
+    handleResetRecording();
+    const newIndex = Math.max(0, currentSentenceIndex - 1);
+    setSelectedSentence(selectedScene.sentences[newIndex]);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence]);
+
+  const handleNextSentence = useCallback(() => {
+    if (recorder.isRecording) {
+      recorder.stopRecording();
+    }
+    if (isPlayingRecording) {
+      handlePlaybackEnded();
+      player.stop();
+    }
+    stopAnimation();
+    handleResetRecording();
+    const newIndex = Math.min(
+      selectedScene.sentences.length - 1,
+      currentSentenceIndex + 1
+    );
+    setSelectedSentence(selectedScene.sentences[newIndex]);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence]);
 
   useEffect(() => {
     return () => {
@@ -183,23 +254,6 @@ export default function RhythmPractice() {
       }
     };
   }, []);
-
-  const handlePrevSentence = () => {
-    stopAnimation();
-    handleResetRecording();
-    const newIndex = Math.max(0, currentSentenceIndex - 1);
-    setSelectedSentence(selectedScene.sentences[newIndex]);
-  };
-
-  const handleNextSentence = () => {
-    stopAnimation();
-    handleResetRecording();
-    const newIndex = Math.min(
-      selectedScene.sentences.length - 1,
-      currentSentenceIndex + 1
-    );
-    setSelectedSentence(selectedScene.sentences[newIndex]);
-  };
 
   const currentChunk =
     selectedSentence && currentChunkIndex >= 0
@@ -215,11 +269,7 @@ export default function RhythmPractice() {
           {scenes.map((scene) => (
             <button
               key={scene.id}
-              onClick={() => {
-                stopAnimation();
-                handleResetRecording();
-                setSelectedScene(scene.id);
-              }}
+              onClick={() => handleSwitchScene(scene.id)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 selectedScene.id === scene.id
                   ? "bg-blue-500 text-white shadow-lg"
@@ -234,10 +284,7 @@ export default function RhythmPractice() {
 
       <div className="flex items-center gap-2 bg-gray-100 rounded-full p-1">
         <button
-          onClick={() => {
-            setIsRecordingMode(false);
-            handleResetRecording();
-          }}
+          onClick={() => handleSwitchMode(false)}
           className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
             !isRecordingMode
               ? "bg-white text-blue-600 shadow-sm"
@@ -248,10 +295,7 @@ export default function RhythmPractice() {
           节奏练习
         </button>
         <button
-          onClick={() => {
-            setIsRecordingMode(true);
-            stopAnimation();
-          }}
+          onClick={() => handleSwitchMode(true)}
           className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
             isRecordingMode
               ? "bg-white text-emerald-600 shadow-sm"
@@ -341,9 +385,7 @@ export default function RhythmPractice() {
               </button>
 
               <button
-                onClick={() => {
-                  stopAnimation();
-                }}
+                onClick={stopAnimation}
                 className="flex items-center gap-2 px-6 py-4 rounded-full font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all"
               >
                 <RotateCcw size={20} /> 重置
