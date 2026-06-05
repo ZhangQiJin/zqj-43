@@ -30,6 +30,13 @@ interface AppState {
   tapRecords: TapRecord[];
   addTapRecord: (record: TapRecord) => void;
   clearTapRecords: () => void;
+
+  isRecordingMode: boolean;
+  isPlayingRecording: boolean;
+  recordingPlaybackTime: number;
+  setIsRecordingMode: (mode: boolean) => void;
+  setIsPlayingRecording: (playing: boolean) => void;
+  setRecordingPlaybackTime: (time: number) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -56,4 +63,11 @@ export const useAppStore = create<AppState>((set) => ({
   addTapRecord: (record) =>
     set((state) => ({ tapRecords: [...state.tapRecords, record] })),
   clearTapRecords: () => set({ tapRecords: [] }),
+
+  isRecordingMode: false,
+  isPlayingRecording: false,
+  recordingPlaybackTime: 0,
+  setIsRecordingMode: (mode) => set({ isRecordingMode: mode }),
+  setIsPlayingRecording: (playing) => set({ isPlayingRecording: playing }),
+  setRecordingPlaybackTime: (time) => set({ recordingPlaybackTime: time }),
 }));
