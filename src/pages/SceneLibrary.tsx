@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Play,
   BookOpen,
-  Sparkles,
+  Star,
 } from "lucide-react";
 import { scenes, Sentence } from "@/data/scenes";
 import { useAppStore } from "@/store/useAppStore";
@@ -28,7 +28,7 @@ const colorMap: Record<string, string> = {
 };
 
 export default function SceneLibrary() {
-  const { setSelectedScene, setSelectedSentence, setActiveTab } = useAppStore();
+  const { setSelectedScene, setSelectedSentence, setActiveTab, toggleFavorite, isFavorite } = useAppStore();
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
 
@@ -170,10 +170,29 @@ export default function SceneLibrary() {
                           <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs font-bold px-3 py-1 rounded-full">
                             句型 {index + 1}
                           </span>
-                          <Sparkles
-                            size={16}
-                            className="text-yellow-400"
-                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(sentence, selectedScene!);
+                            }}
+                            className="p-1 rounded-full hover:bg-gray-100 transition-all"
+                          >
+                            <motion.div
+                              key={isFavorite(sentence.id) ? "filled" : "empty"}
+                              initial={{ scale: 0.8, rotate: -30 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            >
+                              <Star
+                                size={18}
+                                className={
+                                  isFavorite(sentence.id)
+                                    ? "text-yellow-400 fill-yellow-400"
+                                    : "text-gray-300"
+                                }
+                              />
+                            </motion.div>
+                          </button>
                         </div>
                         <p className="text-lg font-bold text-gray-800 leading-relaxed mb-2">
                           {sentence.text}

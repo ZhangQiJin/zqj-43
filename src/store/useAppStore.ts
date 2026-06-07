@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { scenes, Sentence, Scene, Chunk } from "@/data/scenes";
 import { Dialogue, DialogueTurn } from "@/data/dialogues";
 
-export type TabType = "rhythm" | "shadow" | "library" | "test" | "wrongWords" | "dailyChallenge" | "dialogue";
+export type TabType = "rhythm" | "shadow" | "library" | "test" | "wrongWords" | "dailyChallenge" | "dialogue" | "favorites";
 
 export interface ChallengeLevel {
   id: number;
@@ -89,6 +89,14 @@ export interface WrongSlice {
   addedAt: number;
 }
 
+export interface FavoriteSentence {
+  id: string;
+  sentence: Sentence;
+  sceneId: string;
+  sceneName: string;
+  addedAt: number;
+}
+
 interface AppState extends ChallengeState {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -145,7 +153,36 @@ interface AppState extends ChallengeState {
   setDialogueResult: (result: DialogueResult | null) => void;
   setCurrentChunkIndexInTurn: (index: number) => void;
   resetDialogueState: () => void;
+
+  favorites: FavoriteSentence[];
+  toggleFavorite: (sentence: Sentence, scene: Scene) => void;
+  removeFavorite: (sentenceId: string) => void;
+  removeFavorites: (sentenceIds: string[]) => void;
+  clearFavorites: () => void;
+  isFavorite: (sentenceId: string) => boolean;
 }
+
+const FAVORITES_STORAGE_KEY = "silent-speaking-favorites";
+
+const loadFavoritesFromStorage = (): FavoriteSentence[] => {
+  try {
+    const stored = localStorage.getItem(FAVORITES_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error("Failed to load favorites from localStorage:", e);
+  }
+  return [];
+};
+
+const saveFavoritesToStorage = (favorites: FavoriteSentence[]) => {
+  try {
+    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
+  } catch (e) {
+    console.error("Failed to save favorites to localStorage:", e);
+  }
+};
 
 const getTodayString = () => {
   const today = new Date();
@@ -189,6 +226,8 @@ const calculateConsecutiveDays = (records: CheckInRecord[]) => {
 export const useAppStore = create<AppState>((set, get) => ({
   activeTab: "rhythm",
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  favorites: loadFavoritesFromStorage(),
 
   currentDailyChallenge: null,
   currentLevelIndex: 0,
@@ -462,4 +501,47 @@ export const useAppStore = create<AppState>((set, get) => ({
       dialogueResult: null,
       currentChunkIndexInTurn: -1,
     }),
+
+  toggleFavorite: (sentence, scene) =>
+    set((state) => {
+      const exists = state.favorites.some((f) => f.id === sentence.id);
+      let newFavorites: FavoriteSentence[];
+      if (exists) {
+        newFavorites = state.favorites.filter((f) => f.id !== sentence.id);
+      } else {
+        const newFavorite: FavoriteSentence = {
+          id: sentence.id,
+          sentence,
+          sceneId: scene.id,
+          sceneName: scene.name,
+          addedAt: Date.now(),
+        };
+        newFavorites = [...state.favorites, newFavorite];
+      }
+      saveFavoritesToStorage(newFavorites);
+      return { favorites: newFavorites };
+    }),
+
+  removeFavorite: (sentenceId) =>
+    set((state) => {
+      const newFavorites = state.favorites.filter((f) => f.id !== sentenceId);
+      saveFavoritesToStorage(newFavorites);
+      return { favorites: newFavorites };
+    }),
+
+  removeFavorites: (sentenceIds) =>
+    set((state) => {
+      const newFavorites = state.favorites.filter((f) => !sentenceIds.includes(f.id));
+      saveFavoritesToStorage(newFavorites);
+      return { favorites: newFavorites };
+    }),
+
+  clearFavorites: () => {
+    saveFavoritesToStorage([]);
+    set({ favorites: [] });
+  },
+
+  isFavorite: (sentenceId) => {
+    return get().favorites.some((f) => f.id === sentenceId);
+  },
 }));

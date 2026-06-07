@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mic, BookOpen, Library, BarChart3, VolumeX, BookX, Flame, MessageSquare } from "lucide-react";
+import { Mic, BookOpen, Library, BarChart3, VolumeX, BookX, Flame, MessageSquare, Star } from "lucide-react";
 import { useAppStore, TabType } from "@/store/useAppStore";
 import RhythmPractice from "./RhythmPractice";
 import ShadowReading from "./ShadowReading";
@@ -8,6 +8,7 @@ import SelfTest from "./SelfTest";
 import WrongWordBook from "./WrongWordBook";
 import DailyChallenge from "./DailyChallenge";
 import DialogueSimulation from "./DialogueSimulation";
+import Favorites from "./Favorites";
 import CheckInCalendar from "@/components/CheckInCalendar";
 import AchievementModal from "@/components/AchievementModal";
 
@@ -54,6 +55,12 @@ const tabs: { id: TabType; label: string; icon: React.ReactNode; color: string }
     icon: <Flame size={20} />,
     color: "orange",
   },
+  {
+    id: "favorites",
+    label: "收藏集",
+    icon: <Star size={20} />,
+    color: "amber",
+  },
 ];
 
 const colorClasses: Record<string, { bg: string; text: string; border: string }> = {
@@ -87,6 +94,11 @@ const colorClasses: Record<string, { bg: string; text: string; border: string }>
     text: "text-rose-500",
     border: "border-rose-500",
   },
+  amber: {
+    bg: "bg-amber-500",
+    text: "text-amber-500",
+    border: "border-amber-500",
+  },
 };
 
 export default function Home() {
@@ -108,6 +120,8 @@ export default function Home() {
         return <WrongWordBook />;
       case "dailyChallenge":
         return <DailyChallenge />;
+      case "favorites":
+        return <Favorites />;
       default:
         return <RhythmPractice />;
     }

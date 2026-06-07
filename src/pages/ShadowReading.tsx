@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw } from "lucide-react";
+import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { scenes } from "@/data/scenes";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
@@ -18,6 +18,8 @@ export default function ShadowReading() {
     setSelectedSentence,
     bpm,
     setBpm,
+    toggleFavorite,
+    isFavorite,
   } = useAppStore();
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -234,29 +236,56 @@ export default function ShadowReading() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <p
-                  className={`text-sm font-medium ${
-                    selectedSentence?.id === sentence.id
-                      ? "text-purple-700"
-                      : "text-gray-700"
-                  }`}
-                >
-                  {sentence.text}
-                </p>
-                {showTranslation && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {sentence.translation}
-                  </p>
-                )}
-                <div className="flex items-center gap-1 mt-2">
-                  {sentence.chunks.map((chunk, i) => (
-                    <div
-                      key={i}
-                      className={`h-1 rounded-full flex-1 ${
-                        chunk.isStressed ? "bg-red-400" : "bg-purple-300"
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-sm font-medium ${
+                        selectedSentence?.id === sentence.id
+                          ? "text-purple-700"
+                          : "text-gray-700"
                       }`}
-                    />
-                  ))}
+                    >
+                      {sentence.text}
+                    </p>
+                    {showTranslation && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {sentence.translation}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 mt-2">
+                      {sentence.chunks.map((chunk, i) => (
+                        <div
+                          key={i}
+                          className={`h-1 rounded-full flex-1 ${
+                            chunk.isStressed ? "bg-red-400" : "bg-purple-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(sentence, selectedScene);
+                    }}
+                    className="p-1 rounded-full hover:bg-purple-50 transition-all shrink-0"
+                  >
+                    <motion.div
+                      key={isFavorite(sentence.id) ? "filled" : "empty"}
+                      initial={{ scale: 0.8, rotate: -30 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    >
+                      <Star
+                        size={16}
+                        className={
+                          isFavorite(sentence.id)
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-300"
+                        }
+                      />
+                    </motion.div>
+                  </button>
                 </div>
               </motion.div>
             ))}
