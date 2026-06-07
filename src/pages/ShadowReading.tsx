@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star, ListMusic, X, Lightbulb, Focus } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { useChunkPlayer } from "@/hooks/useChunkPlayer";
 import { analyzeRecording, type AnalysisResult, type ChunkScore } from "@/lib/audioAnalysis";
 import RadarChart from "@/components/RadarChart";
 import RecordingControls from "@/components/RecordingControls";
@@ -35,14 +36,12 @@ export default function ShadowReading() {
   const scenes = getAllScenes();
 
   const [phase, setPhase] = useState<Phase>("idle");
-  const [currentChunkIndex, setCurrentChunkIndex] = useState(-1);
   const [showTranslation, setShowTranslation] = useState(true);
   const [showText, setShowText] = useState(true);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [pressStartTime, setPressStartTime] = useState<number | null>(null);
 
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingQueueJumpRef = useRef<boolean>(false);
@@ -51,33 +50,16 @@ export default function ShadowReading() {
 
   const recorder = useAudioRecorder();
 
-  const currentSentenceIndex = selectedScene.sentences.findIndex(
-    (s) => s.id === selectedSentence?.id
-  );
-
-  const playAnimation = useCallback(() => {
-    if (!selectedSentence) return;
-
-    setPhase("playing");
-    setCurrentChunkIndex(-1);
-    setAnalysisResult(null);
-    pendingQueueJumpRef.current = false;
-
-    const speedMultiplier = 80 / bpm;
-    let delay = 0;
-
-    selectedSentence.chunks.forEach((_, index) => {
-      timeoutRef.current = setTimeout(() => {
-        setCurrentChunkIndex(index);
-      }, delay);
-
-      delay += selectedSentence.chunks[index].duration * speedMultiplier;
-    });
-
-    timeoutRef.current = setTimeout(() => {
-      setCurrentChunkIndex(-1);
+  const chunkPlayer = useChunkPlayer({
+    chunks: selectedSentence?.chunks,
+    bpm,
+    onStart: () => {
+      setPhase("playing");
+      setAnalysisResult(null);
+      pendingQueueJumpRef.current = false;
+    },
+    onComplete: () => {
       setPhase("readyToRecord");
-      
       if (isPracticeQueueMode && practiceQueueIndex < practiceQueue.length - 1) {
         setTimeout(() => {
           if (phaseRef.current === "recording" || isRecordingRef.current) {
@@ -88,22 +70,18 @@ export default function ShadowReading() {
           }
         }, 1200);
       }
-    }, delay);
-  }, [selectedSentence, bpm, isPracticeQueueMode, practiceQueueIndex, practiceQueue.length, nextInQueue]);
+    },
+    onStop: () => {
+      setPhase("idle");
+    },
+  });
 
-  const stopAnimation = useCallback(() => {
-    setPhase("idle");
-    setCurrentChunkIndex(-1);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-  }, []);
+  const currentSentenceIndex = selectedScene.sentences.findIndex(
+    (s) => s.id === selectedSentence?.id
+  );
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
       }
@@ -111,7 +89,7 @@ export default function ShadowReading() {
   }, []);
 
   const selectSentence = (index: number) => {
-    stopAnimation();
+    chunkPlayer.stop();
     setAnalysisResult(null);
     recorder.resetRecording();
     setSelectedSentence(selectedScene.sentences[index]);
@@ -199,22 +177,22 @@ export default function ShadowReading() {
   }, []);
 
   const handleReset = useCallback(() => {
-    stopAnimation();
+    chunkPlayer.reset();
     recorder.resetRecording();
     setAnalysisResult(null);
     setIsPlayingRecording(false);
     setPhase("idle");
     pendingQueueJumpRef.current = false;
-  }, [stopAnimation, recorder]);
+  }, [chunkPlayer, recorder]);
 
   const getChunkBackgroundColor = (index: number, chunkScore?: ChunkScore) => {
     if (!chunkScore || phase !== "result") {
-      if (index === currentChunkIndex) {
+      if (index === chunkPlayer.currentChunkIndex) {
         return selectedSentence?.chunks[index]?.isStressed
           ? "bg-red-500 text-white"
           : "bg-purple-500 text-white";
       }
-      if (index < currentChunkIndex) {
+      if (index < chunkPlayer.currentChunkIndex) {
         return selectedSentence?.chunks[index]?.isStressed
           ? "bg-red-200 text-red-800"
           : "bg-purple-200 text-purple-800";
@@ -252,7 +230,7 @@ export default function ShadowReading() {
                 <button
                   key={scene.id}
                   onClick={() => {
-                    stopAnimation();
+                    chunkPlayer.stop();
                     setAnalysisResult(null);
                     recorder.resetRecording();
                     clearPracticeQueue();
@@ -323,7 +301,7 @@ export default function ShadowReading() {
                     key={sentence.id + "-" + index}
                     onClick={() => {
                       if (isPracticeQueueMode) {
-                        stopAnimation();
+                        chunkPlayer.stop();
                         setAnalysisResult(null);
                         recorder.resetRecording();
                         const item = practiceQueue[index];
@@ -470,7 +448,7 @@ export default function ShadowReading() {
                               analysisResult?.chunkScores[index]
                             )}`}
                             animate={{
-                              scale: index === currentChunkIndex ? 1.1 : 1,
+                              scale: index === chunkPlayer.currentChunkIndex ? 1.1 : 1,
                             }}
                           >
                             {chunk.text}
@@ -517,9 +495,9 @@ export default function ShadowReading() {
                             : analysisResult.chunkScores[index].matchLevel === "partial"
                             ? "bg-yellow-500"
                             : "bg-red-500"
-                          : index === currentChunkIndex
+                          : index === chunkPlayer.currentChunkIndex
                           ? "bg-purple-500 scale-150"
-                          : index < currentChunkIndex
+                          : index < chunkPlayer.currentChunkIndex
                           ? "bg-purple-300"
                           : "bg-gray-200"
                       }`}
@@ -632,15 +610,15 @@ export default function ShadowReading() {
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-4">
               <button
-                onClick={phase === "playing" ? stopAnimation : playAnimation}
+                onClick={chunkPlayer.isPlaying ? chunkPlayer.stop : chunkPlayer.start}
                 disabled={phase === "recording" || phase === "analyzing"}
                 className={`flex items-center gap-2 px-8 py-4 rounded-full font-bold text-white text-lg shadow-lg transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  phase === "playing"
+                  chunkPlayer.isPlaying
                     ? "bg-red-500 hover:bg-red-600"
                     : "bg-purple-500 hover:bg-purple-600"
                 }`}
               >
-                {phase === "playing" ? (
+                {chunkPlayer.isPlaying ? (
                   <>
                     <Pause size={24} /> 暂停
                   </>

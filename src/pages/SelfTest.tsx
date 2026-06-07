@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAppStore, TapRecord } from "@/store/useAppStore";
+import { useChunkPlayer } from "@/hooks/useChunkPlayer";
 import {
   TestTrendRecord,
   loadTrendRecords,
@@ -37,15 +38,12 @@ export default function SelfTest() {
   } = useAppStore();
 
   const scenes = getAllScenes();
-  const [isTesting, setIsTesting] = useState(false);
-  const [currentChunkIndex, setCurrentChunkIndex] = useState(-1);
   const [tapRecords, setTapRecords] = useState<TapRecord[]>([]);
   const [testStartTime, setTestStartTime] = useState<number | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [trendRecords, setTrendRecords] = useState<TestTrendRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<TestTrendRecord | null>(null);
 
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const expectedTimesRef = useRef<number[]>([]);
   const hasSavedRecordRef = useRef(false);
 
@@ -62,53 +60,30 @@ export default function SelfTest() {
     return times;
   }, [selectedSentence, speedMultiplier]);
 
-  const startTest = useCallback(() => {
-    if (!selectedSentence) return;
-
-    setIsTesting(true);
-    setCurrentChunkIndex(-1);
-    setTapRecords([]);
-    setShowResults(false);
-    setTestStartTime(Date.now());
-    expectedTimesRef.current = calculateExpectedTimes();
-    hasSavedRecordRef.current = false;
-
-    let delay = 0;
-
-    selectedSentence.chunks.forEach((_, index) => {
-      timeoutRef.current = setTimeout(() => {
-        setCurrentChunkIndex(index);
-      }, delay);
-
-      delay += selectedSentence.chunks[index].duration * speedMultiplier;
-    });
-
-    timeoutRef.current = setTimeout(() => {
-      setIsTesting(false);
-      setCurrentChunkIndex(-1);
+  const chunkPlayer = useChunkPlayer({
+    chunks: selectedSentence?.chunks,
+    bpm,
+    endDelay: 500,
+    onStart: () => {
+      setTapRecords([]);
+      setShowResults(false);
+      setTestStartTime(Date.now());
+      expectedTimesRef.current = calculateExpectedTimes();
+      hasSavedRecordRef.current = false;
+    },
+    onComplete: () => {
       setShowResults(true);
-    }, delay + 500);
-  }, [selectedSentence, speedMultiplier, calculateExpectedTimes]);
+    },
+    onStop: () => {
+      setShowResults(false);
+    },
+  });
 
-  const stopTest = useCallback(() => {
-    setIsTesting(false);
-    setCurrentChunkIndex(-1);
-    setShowResults(false);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
+  const startTest = chunkPlayer.start;
+  const stopTest = chunkPlayer.stop;
 
   const handleTap = () => {
-    if (!isTesting || !testStartTime || !selectedSentence) return;
+    if (!chunkPlayer.isPlaying || !testStartTime || !selectedSentence) return;
 
     const currentTime = Date.now() - testStartTime;
     const nextIndex = tapRecords.length;
@@ -217,7 +192,7 @@ export default function SelfTest() {
             <button
               key={scene.id}
               onClick={() => {
-                stopTest();
+                chunkPlayer.stop();
                 setSelectedScene(scene.id);
               }}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
@@ -251,7 +226,7 @@ export default function SelfTest() {
               <div className="flex flex-wrap gap-2 justify-center mb-6">
                 {selectedSentence.chunks.map((chunk, index) => {
                   const tapRecord = tapRecords[index];
-                  const isActive = index === currentChunkIndex;
+                  const isActive = index === chunkPlayer.currentChunkIndex;
                   const isTapped = tapRecord !== undefined;
 
                   let statusColor = "bg-gray-200 text-gray-500";
@@ -268,7 +243,7 @@ export default function SelfTest() {
                     } else {
                       statusColor = "bg-red-400 text-white";
                     }
-                  } else if (index < currentChunkIndex) {
+                  } else if (index < chunkPlayer.currentChunkIndex) {
                     statusColor = "bg-gray-300 text-gray-600";
                   }
 
@@ -298,7 +273,7 @@ export default function SelfTest() {
                   <motion.div
                     key={index}
                     className={`w-3 h-3 rounded-full transition-all ${
-                      index === currentChunkIndex
+                      index === chunkPlayer.currentChunkIndex
                         ? "bg-emerald-500 scale-150"
                         : index < tapRecords.length
                         ? "bg-emerald-300"
@@ -313,17 +288,17 @@ export default function SelfTest() {
           <div className="flex flex-col items-center gap-6">
             <div className="flex gap-4">
               <motion.button
-                onClick={isTesting ? handleTap : startTest}
+                onClick={chunkPlayer.isPlaying ? handleTap : startTest}
                 disabled={!selectedSentence}
                 whileTap={{ scale: 0.95 }}
                 whileHover={{ scale: 1.05 }}
                 className={`w-48 h-48 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all ${
-                  isTesting
+                  chunkPlayer.isPlaying
                     ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white animate-pulse"
                     : "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
                 }`}
               >
-                {isTesting ? (
+                {chunkPlayer.isPlaying ? (
                   <>
                     <Target size={40} />
                     <span className="text-lg font-bold mt-2">点击节拍</span>
@@ -336,7 +311,7 @@ export default function SelfTest() {
                 )}
               </motion.button>
 
-              {isTesting && (
+              {chunkPlayer.isPlaying && (
                 <motion.button
                   onClick={stopTest}
                   whileTap={{ scale: 0.95 }}
@@ -348,7 +323,7 @@ export default function SelfTest() {
               )}
             </div>
 
-            {isTesting && (
+            {chunkPlayer.isPlaying && (
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -361,7 +336,7 @@ export default function SelfTest() {
 
             <div className="flex items-center gap-4">
               <button
-                onClick={stopTest}
+                onClick={chunkPlayer.reset}
                 className="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all"
               >
                 <RotateCcw size={18} /> 重置
