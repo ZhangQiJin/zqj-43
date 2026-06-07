@@ -23,6 +23,7 @@ import {
   clearTrendRecords,
   formatTime,
 } from "@/lib/trendStorage";
+import { calculateStats, getScoreGrade } from "@/lib/rating";
 import TrendChart from "@/components/TrendChart";
 import TrendRecordDetailModal from "@/components/TrendRecordDetailModal";
 
@@ -103,35 +104,10 @@ export default function SelfTest() {
     setTapRecords((prev) => [...prev, newRecord]);
   };
 
-  const calculateStats = () => {
-    if (tapRecords.length === 0 || !selectedSentence) return null;
-
-    const deviations = tapRecords.map((r) => Math.abs(r.deviation));
-    const avgDeviation = deviations.reduce((a, b) => a + b, 0) / deviations.length;
-
-    const maxDeviation = Math.max(...deviations);
-    const minDeviation = Math.min(...deviations);
-
-    const goodTaps = deviations.filter((d) => d < 200).length;
-    const accuracy = (goodTaps / tapRecords.length) * 100;
-
-    const score = Math.max(
-      0,
-      100 - avgDeviation / 10 - (100 - accuracy) * 0.5
-    );
-
-    return {
-      avgDeviation: Math.round(avgDeviation),
-      maxDeviation: Math.round(maxDeviation),
-      minDeviation: Math.round(minDeviation),
-      accuracy: Math.round(accuracy),
-      score: Math.round(score),
-      totalTaps: tapRecords.length,
-      expectedTaps: selectedSentence.chunks.length,
-    };
-  };
-
-  const stats = calculateStats();
+  const stats = calculateStats(
+    tapRecords.map((r) => r.deviation),
+    selectedSentence?.chunks.length || 0
+  );
 
   useEffect(() => {
     setTrendRecords(loadTrendRecords());
@@ -166,14 +142,6 @@ export default function SelfTest() {
       setTrendRecords(updatedRecords);
     }
   }, [showResults, selectedSentence, tapRecords, selectedScene, addWrongSlice, stats]);
-
-  const getScoreGrade = (score: number) => {
-    if (score >= 90) return { grade: "S", color: "text-yellow-500", bg: "bg-yellow-100" };
-    if (score >= 80) return { grade: "A", color: "text-green-500", bg: "bg-green-100" };
-    if (score >= 70) return { grade: "B", color: "text-blue-500", bg: "bg-blue-100" };
-    if (score >= 60) return { grade: "C", color: "text-orange-500", bg: "bg-orange-100" };
-    return { grade: "D", color: "text-red-500", bg: "bg-red-100" };
-  };
 
   return (
     <div className="space-y-8">
