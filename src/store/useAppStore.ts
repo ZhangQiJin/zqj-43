@@ -55,8 +55,12 @@ interface AppState {
 
   isWrongSlicePractice: boolean;
   highlightedChunkIndex: number | null;
+  originalBpm: number | null;
   setIsWrongSlicePractice: (value: boolean) => void;
   setHighlightedChunkIndex: (index: number | null) => void;
+  setOriginalBpm: (bpm: number | null) => void;
+  startWrongSlicePractice: (highlightedIndex: number, currentBpm: number) => void;
+  exitWrongSlicePractice: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -115,7 +119,26 @@ export const useAppStore = create<AppState>((set) => ({
 
   isWrongSlicePractice: false,
   highlightedChunkIndex: null,
+  originalBpm: null,
   setIsWrongSlicePractice: (value) => set({ isWrongSlicePractice: value }),
   setHighlightedChunkIndex: (index) =>
     set({ highlightedChunkIndex: index }),
+  setOriginalBpm: (bpm) => set({ originalBpm: bpm }),
+  startWrongSlicePractice: (highlightedIndex, currentBpm) =>
+    set((state) => {
+      const newBpm = Math.max(40, Math.round(currentBpm * 0.8));
+      return {
+        isWrongSlicePractice: true,
+        highlightedChunkIndex: highlightedIndex,
+        originalBpm: currentBpm,
+        bpm: newBpm,
+      };
+    }),
+  exitWrongSlicePractice: () =>
+    set((state) => ({
+      isWrongSlicePractice: false,
+      highlightedChunkIndex: null,
+      bpm: state.originalBpm ?? state.bpm,
+      originalBpm: null,
+    })),
 }));

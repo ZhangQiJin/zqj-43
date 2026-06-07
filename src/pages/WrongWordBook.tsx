@@ -23,9 +23,7 @@ export default function WrongWordBook() {
     clearWrongSlices,
     setSelectedScene,
     setSelectedSentence,
-    setIsWrongSlicePractice,
-    setHighlightedChunkIndex,
-    setBpm,
+    startWrongSlicePractice,
     setActiveTab,
     bpm,
   } = useAppStore();
@@ -61,10 +59,7 @@ export default function WrongWordBook() {
   const handlePractice = (slice: WrongSlice) => {
     setSelectedScene(slice.scene.id);
     setSelectedSentence(slice.sentence);
-    setIsWrongSlicePractice(true);
-    setHighlightedChunkIndex(slice.chunkIndex);
-    const reducedBpm = Math.max(40, Math.round(bpm * 0.8));
-    setBpm(reducedBpm);
+    startWrongSlicePractice(slice.chunkIndex, bpm);
     setActiveTab("rhythm");
   };
 

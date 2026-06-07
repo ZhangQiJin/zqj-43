@@ -27,8 +27,7 @@ export default function RhythmPractice() {
     setCurrentChunkIndex,
     isWrongSlicePractice,
     highlightedChunkIndex,
-    setIsWrongSlicePractice,
-    setHighlightedChunkIndex,
+    exitWrongSlicePractice,
   } = useAppStore();
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -215,9 +214,8 @@ export default function RhythmPractice() {
     stopAnimation();
     handleResetRecording();
     setSelectedScene(sceneId);
-    setIsWrongSlicePractice(false);
-    setHighlightedChunkIndex(null);
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, setSelectedScene, setIsWrongSlicePractice, setHighlightedChunkIndex]);
+    exitWrongSlicePractice();
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, setSelectedScene, exitWrongSlicePractice]);
 
   const handlePrevSentence = useCallback(() => {
     if (recorder.isRecording) {
@@ -231,9 +229,8 @@ export default function RhythmPractice() {
     handleResetRecording();
     const newIndex = Math.max(0, currentSentenceIndex - 1);
     setSelectedSentence(selectedScene.sentences[newIndex]);
-    setIsWrongSlicePractice(false);
-    setHighlightedChunkIndex(null);
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence, setIsWrongSlicePractice, setHighlightedChunkIndex]);
+    exitWrongSlicePractice();
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence, exitWrongSlicePractice]);
 
   const handleNextSentence = useCallback(() => {
     if (recorder.isRecording) {
@@ -250,9 +247,8 @@ export default function RhythmPractice() {
       currentSentenceIndex + 1
     );
     setSelectedSentence(selectedScene.sentences[newIndex]);
-    setIsWrongSlicePractice(false);
-    setHighlightedChunkIndex(null);
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence, setIsWrongSlicePractice, setHighlightedChunkIndex]);
+    exitWrongSlicePractice();
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence, exitWrongSlicePractice]);
 
   useEffect(() => {
     return () => {
@@ -336,10 +332,7 @@ export default function RhythmPractice() {
               </div>
             </div>
             <button
-              onClick={() => {
-                setIsWrongSlicePractice(false);
-                setHighlightedChunkIndex(null);
-              }}
+              onClick={exitWrongSlicePractice}
               className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all text-sm font-medium"
             >
               退出练习
