@@ -41,6 +41,8 @@ export default function ShadowReading() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingQueueJumpRef = useRef<boolean>(false);
+  const phaseRef = useRef<Phase>("idle");
+  const isRecordingRef = useRef<boolean>(false);
 
   const recorder = useAudioRecorder();
 
@@ -73,7 +75,7 @@ export default function ShadowReading() {
       
       if (isPracticeQueueMode && practiceQueueIndex < practiceQueue.length - 1) {
         setTimeout(() => {
-          if (phase === "recording" || recorder.isRecording) {
+          if (phaseRef.current === "recording" || isRecordingRef.current) {
             pendingQueueJumpRef.current = true;
           } else {
             nextInQueue();
@@ -82,7 +84,7 @@ export default function ShadowReading() {
         }, 1200);
       }
     }, delay);
-  }, [selectedSentence, bpm, isPracticeQueueMode, practiceQueueIndex, practiceQueue.length, nextInQueue, phase, recorder.isRecording]);
+  }, [selectedSentence, bpm, isPracticeQueueMode, practiceQueueIndex, practiceQueue.length, nextInQueue]);
 
   const stopAnimation = useCallback(() => {
     setPhase("idle");
@@ -157,6 +159,14 @@ export default function ShadowReading() {
       setPhase("result");
     }
   }, [recorder.audioBuffer, selectedSentence, phase]);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  useEffect(() => {
+    isRecordingRef.current = recorder.isRecording;
+  }, [recorder.isRecording]);
 
   useEffect(() => {
     if (phase === "result" && pendingQueueJumpRef.current) {

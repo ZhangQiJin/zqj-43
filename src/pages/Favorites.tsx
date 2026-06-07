@@ -120,6 +120,7 @@ export default function Favorites() {
               <button
                 onClick={() => handleQuickPractice("rhythm")}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-all"
+                title="从第一句开始，依次练习全部收藏句子"
               >
                 <Mic size={16} />
                 口型练习
@@ -127,6 +128,7 @@ export default function Favorites() {
               <button
                 onClick={() => handleQuickPractice("shadow")}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl text-sm font-medium hover:bg-purple-600 transition-all"
+                title="从第一句开始，依次练习全部收藏句子"
               >
                 <BookOpen size={16} />
                 影子跟读
@@ -210,7 +212,7 @@ export default function Favorites() {
                               startPracticeQueue(queue, "rhythm", index);
                             }}
                             className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all"
-                            title="从这句开始口型练习"
+                            title="从此句开始，依次练习全部收藏句子"
                           >
                             <Mic size={18} />
                           </button>
@@ -225,7 +227,7 @@ export default function Favorites() {
                               startPracticeQueue(queue, "shadow", index);
                             }}
                             className="p-2 rounded-xl bg-purple-50 text-purple-500 hover:bg-purple-100 transition-all"
-                            title="从这句开始影子跟读"
+                            title="从此句开始，依次练习全部收藏句子"
                           >
                             <BookOpen size={18} />
                           </button>
