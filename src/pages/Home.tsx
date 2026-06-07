@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mic, BookOpen, Library, BarChart3, VolumeX, BookX, Flame } from "lucide-react";
+import { Mic, BookOpen, Library, BarChart3, VolumeX, BookX, Flame, MessageSquare } from "lucide-react";
 import { useAppStore, TabType } from "@/store/useAppStore";
 import RhythmPractice from "./RhythmPractice";
 import ShadowReading from "./ShadowReading";
@@ -7,6 +7,7 @@ import SceneLibrary from "./SceneLibrary";
 import SelfTest from "./SelfTest";
 import WrongWordBook from "./WrongWordBook";
 import DailyChallenge from "./DailyChallenge";
+import DialogueSimulation from "./DialogueSimulation";
 import CheckInCalendar from "@/components/CheckInCalendar";
 import AchievementModal from "@/components/AchievementModal";
 
@@ -22,6 +23,12 @@ const tabs: { id: TabType; label: string; icon: React.ReactNode; color: string }
     label: "影子跟读",
     icon: <BookOpen size={20} />,
     color: "purple",
+  },
+  {
+    id: "dialogue",
+    label: "对话模拟",
+    icon: <MessageSquare size={20} />,
+    color: "indigo",
   },
   {
     id: "library",
@@ -60,6 +67,11 @@ const colorClasses: Record<string, { bg: string; text: string; border: string }>
     text: "text-purple-500",
     border: "border-purple-500",
   },
+  indigo: {
+    bg: "bg-indigo-500",
+    text: "text-indigo-500",
+    border: "border-indigo-500",
+  },
   orange: {
     bg: "bg-orange-500",
     text: "text-orange-500",
@@ -86,6 +98,8 @@ export default function Home() {
         return <RhythmPractice />;
       case "shadow":
         return <ShadowReading />;
+      case "dialogue":
+        return <DialogueSimulation />;
       case "library":
         return <SceneLibrary />;
       case "test":

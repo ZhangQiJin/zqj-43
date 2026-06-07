@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { scenes, Sentence, Scene, Chunk } from "@/data/scenes";
+import { Dialogue, DialogueTurn } from "@/data/dialogues";
 
-export type TabType = "rhythm" | "shadow" | "library" | "test" | "wrongWords" | "dailyChallenge";
+export type TabType = "rhythm" | "shadow" | "library" | "test" | "wrongWords" | "dailyChallenge" | "dialogue";
 
 export interface ChallengeLevel {
   id: number;
@@ -59,6 +60,25 @@ export interface TapRecord {
   deviation: number;
 }
 
+export interface DialogueTurnRecord {
+  turnId: string;
+  turnIndex: number;
+  clickTimestamp: number;
+  expectedDuration: number;
+  deviation: number;
+  completed: boolean;
+}
+
+export interface DialogueResult {
+  dialogueId: string;
+  completionRate: number;
+  averageDeviation: number;
+  rhythmStability: number;
+  turnRecords: DialogueTurnRecord[];
+  totalScore: number;
+  grade: string;
+}
+
 export interface WrongSlice {
   id: string;
   chunk: Chunk;
@@ -110,6 +130,21 @@ interface AppState extends ChallengeState {
   setOriginalBpm: (bpm: number | null) => void;
   startWrongSlicePractice: (highlightedIndex: number, currentBpm: number) => void;
   exitWrongSlicePractice: () => void;
+
+  selectedDialogue: Dialogue | null;
+  currentTurnIndex: number;
+  dialoguePhase: "idle" | "playing" | "waitingForInput" | "finished";
+  dialogueTurnRecords: DialogueTurnRecord[];
+  dialogueResult: DialogueResult | null;
+  currentChunkIndexInTurn: number;
+  setSelectedDialogue: (dialogue: Dialogue | null) => void;
+  setCurrentTurnIndex: (index: number) => void;
+  setDialoguePhase: (phase: "idle" | "playing" | "waitingForInput" | "finished") => void;
+  addDialogueTurnRecord: (record: DialogueTurnRecord) => void;
+  clearDialogueTurnRecords: () => void;
+  setDialogueResult: (result: DialogueResult | null) => void;
+  setCurrentChunkIndexInTurn: (index: number) => void;
+  resetDialogueState: () => void;
 }
 
 const getTodayString = () => {
@@ -404,4 +439,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       bpm: state.originalBpm ?? state.bpm,
       originalBpm: null,
     })),
+
+  selectedDialogue: null,
+  currentTurnIndex: 0,
+  dialoguePhase: "idle",
+  dialogueTurnRecords: [],
+  dialogueResult: null,
+  currentChunkIndexInTurn: -1,
+  setSelectedDialogue: (dialogue) => set({ selectedDialogue: dialogue }),
+  setCurrentTurnIndex: (index) => set({ currentTurnIndex: index }),
+  setDialoguePhase: (phase) => set({ dialoguePhase: phase }),
+  addDialogueTurnRecord: (record) =>
+    set((state) => ({ dialogueTurnRecords: [...state.dialogueTurnRecords, record] })),
+  clearDialogueTurnRecords: () => set({ dialogueTurnRecords: [] }),
+  setDialogueResult: (result) => set({ dialogueResult: result }),
+  setCurrentChunkIndexInTurn: (index) => set({ currentChunkIndexInTurn: index }),
+  resetDialogueState: () =>
+    set({
+      currentTurnIndex: 0,
+      dialoguePhase: "idle",
+      dialogueTurnRecords: [],
+      dialogueResult: null,
+      currentChunkIndexInTurn: -1,
+    }),
 }));
