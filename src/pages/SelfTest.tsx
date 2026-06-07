@@ -10,8 +10,20 @@ import {
   Clock,
   TrendingUp,
   Award,
+  BarChart3,
+  Eye,
+  Trash2,
 } from "lucide-react";
 import { useAppStore, TapRecord } from "@/store/useAppStore";
+import {
+  TestTrendRecord,
+  loadTrendRecords,
+  saveTrendRecord,
+  clearTrendRecords,
+  formatTime,
+} from "@/lib/trendStorage";
+import TrendChart from "@/components/TrendChart";
+import TrendRecordDetailModal from "@/components/TrendRecordDetailModal";
 
 export default function SelfTest() {
   const {
@@ -30,6 +42,8 @@ export default function SelfTest() {
   const [tapRecords, setTapRecords] = useState<TapRecord[]>([]);
   const [testStartTime, setTestStartTime] = useState<number | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [trendRecords, setTrendRecords] = useState<TestTrendRecord[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<TestTrendRecord | null>(null);
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const expectedTimesRef = useRef<number[]>([]);
@@ -143,7 +157,11 @@ export default function SelfTest() {
   const stats = calculateStats();
 
   useEffect(() => {
-    if (showResults && selectedSentence && tapRecords.length > 0) {
+    setTrendRecords(loadTrendRecords());
+  }, []);
+
+  useEffect(() => {
+    if (showResults && selectedSentence && tapRecords.length > 0 && stats) {
       tapRecords.forEach((record) => {
         if (Math.abs(record.deviation) > 300 && record.index < selectedSentence.chunks.length) {
           addWrongSlice({
@@ -155,8 +173,20 @@ export default function SelfTest() {
           });
         }
       });
+
+      const grade = getScoreGrade(stats.score).grade;
+      const updatedRecords = saveTrendRecord(
+        selectedScene,
+        selectedSentence,
+        stats.score,
+        stats.accuracy,
+        stats.avgDeviation,
+        grade,
+        tapRecords
+      );
+      setTrendRecords(updatedRecords);
     }
-  }, [showResults, tapRecords, selectedSentence, selectedScene, addWrongSlice]);
+  }, [showResults, tapRecords, selectedSentence, selectedScene, addWrongSlice, stats]);
 
   const getScoreGrade = (score: number) => {
     if (score >= 90) return { grade: "S", color: "text-yellow-500", bg: "bg-yellow-100" };
@@ -517,6 +547,129 @@ export default function SelfTest() {
           </div>
         </div>
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-100 rounded-xl">
+              <BarChart3 className="text-emerald-500" size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-800">节奏稳定性趋势</h3>
+              <p className="text-sm text-gray-500">最近 30 次测试记录</p>
+            </div>
+          </div>
+          {trendRecords.length > 0 && (
+            <button
+              onClick={() => {
+                if (confirm("确定要清除所有历史记录吗？")) {
+                  clearTrendRecords();
+                  setTrendRecords([]);
+                }
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <Trash2 size={14} />
+              清除记录
+            </button>
+          )}
+        </div>
+
+        <TrendChart records={trendRecords} />
+
+        <div className="mt-8">
+          <h4 className="text-sm font-bold text-gray-700 mb-3">历史测试记录</h4>
+          {trendRecords.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <BarChart3 size={48} className="mx-auto mb-3 opacity-50" />
+              <p>暂无测试记录，完成测试后将显示在这里</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      时间
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      场景
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      句子
+                    </th>
+                    <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      得分
+                    </th>
+                    <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      等级
+                    </th>
+                    <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {trendRecords.map((record) => {
+                    const gradeInfo = getScoreGrade(record.score);
+                    return (
+                      <tr
+                        key={record.id}
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => setSelectedRecord(record)}
+                      >
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {formatTime(record.timestamp)}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {record.sceneName}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-800 max-w-xs truncate">
+                          {record.sentenceText}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="text-lg font-bold text-emerald-600">
+                            {record.score}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span
+                            className={`inline-block w-8 h-8 rounded-full flex items-center justify-center text-sm font-black ${gradeInfo.bg} ${gradeInfo.color}`}
+                          >
+                            {gradeInfo.grade}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRecord(record);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          >
+                            <Eye size={14} />
+                            查看详情
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      <TrendRecordDetailModal
+        record={selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+      />
     </div>
   );
 }
