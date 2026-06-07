@@ -47,6 +47,7 @@ export default function SelfTest() {
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const expectedTimesRef = useRef<number[]>([]);
+  const hasSavedRecordRef = useRef(false);
 
   const speedMultiplier = 80 / bpm;
 
@@ -70,6 +71,7 @@ export default function SelfTest() {
     setShowResults(false);
     setTestStartTime(Date.now());
     expectedTimesRef.current = calculateExpectedTimes();
+    hasSavedRecordRef.current = false;
 
     let delay = 0;
 
@@ -161,7 +163,9 @@ export default function SelfTest() {
   }, []);
 
   useEffect(() => {
-    if (showResults && selectedSentence && tapRecords.length > 0 && stats) {
+    if (showResults && selectedSentence && tapRecords.length > 0 && stats && !hasSavedRecordRef.current) {
+      hasSavedRecordRef.current = true;
+      
       tapRecords.forEach((record) => {
         if (Math.abs(record.deviation) > 300 && record.index < selectedSentence.chunks.length) {
           addWrongSlice({
@@ -186,7 +190,7 @@ export default function SelfTest() {
       );
       setTrendRecords(updatedRecords);
     }
-  }, [showResults, tapRecords, selectedSentence, selectedScene, addWrongSlice, stats]);
+  }, [showResults, selectedSentence, tapRecords, selectedScene, addWrongSlice, stats]);
 
   const getScoreGrade = (score: number) => {
     if (score >= 90) return { grade: "S", color: "text-yellow-500", bg: "bg-yellow-100" };
