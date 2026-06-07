@@ -207,7 +207,7 @@ export default function Favorites() {
                                 sceneId: f.sceneId,
                                 sceneName: f.sceneName,
                               }));
-                              startPracticeQueue(queue, "rhythm");
+                              startPracticeQueue(queue, "rhythm", index);
                             }}
                             className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all"
                             title="从这句开始口型练习"
@@ -222,7 +222,7 @@ export default function Favorites() {
                                 sceneId: f.sceneId,
                                 sceneName: f.sceneName,
                               }));
-                              startPracticeQueue(queue, "shadow");
+                              startPracticeQueue(queue, "shadow", index);
                             }}
                             className="p-2 rounded-xl bg-purple-50 text-purple-500 hover:bg-purple-100 transition-all"
                             title="从这句开始影子跟读"

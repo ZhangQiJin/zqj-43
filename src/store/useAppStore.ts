@@ -173,7 +173,7 @@ interface AppState extends ChallengeState {
   setPracticeQueue: (queue: QueueSentence[]) => void;
   setPracticeQueueIndex: (index: number) => void;
   setIsPracticeQueueMode: (mode: boolean) => void;
-  startPracticeQueue: (queue: QueueSentence[], mode: TabType) => void;
+  startPracticeQueue: (queue: QueueSentence[], mode: TabType, startIndex?: number) => void;
   nextInQueue: () => void;
   prevInQueue: () => void;
   clearPracticeQueue: () => void;
@@ -570,19 +570,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPracticeQueueIndex: (index) => set({ practiceQueueIndex: index }),
   setIsPracticeQueueMode: (mode) => set({ isPracticeQueueMode: mode }),
 
-  startPracticeQueue: (queue, mode) => {
+  startPracticeQueue: (queue, mode, startIndex = 0) => {
     if (queue.length === 0) return;
-    const firstItem = queue[0];
-    const scene = scenes.find((s) => s.id === firstItem.sceneId);
+    const safeIndex = Math.max(0, Math.min(startIndex, queue.length - 1));
+    const startItem = queue[safeIndex];
+    const scene = scenes.find((s) => s.id === startItem.sceneId);
     if (!scene) return;
 
     set({
       practiceQueue: queue,
-      practiceQueueIndex: 0,
+      practiceQueueIndex: safeIndex,
       isPracticeQueueMode: true,
       selectedScene: scene,
-      selectedSentence: firstItem.sentence,
-      bpm: firstItem.sentence.bpm || 80,
+      selectedSentence: startItem.sentence,
+      bpm: startItem.sentence.bpm || 80,
       isPlaying: false,
       currentChunkIndex: -1,
     });

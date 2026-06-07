@@ -40,6 +40,7 @@ export default function ShadowReading() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingQueueJumpRef = useRef<boolean>(false);
 
   const recorder = useAudioRecorder();
 
@@ -53,6 +54,7 @@ export default function ShadowReading() {
     setPhase("playing");
     setCurrentChunkIndex(-1);
     setAnalysisResult(null);
+    pendingQueueJumpRef.current = false;
 
     const speedMultiplier = 80 / bpm;
     let delay = 0;
@@ -71,12 +73,16 @@ export default function ShadowReading() {
       
       if (isPracticeQueueMode && practiceQueueIndex < practiceQueue.length - 1) {
         setTimeout(() => {
-          nextInQueue();
-          setPhase("idle");
+          if (phase === "recording" || recorder.isRecording) {
+            pendingQueueJumpRef.current = true;
+          } else {
+            nextInQueue();
+            setPhase("idle");
+          }
         }, 1200);
       }
     }, delay);
-  }, [selectedSentence, bpm, isPracticeQueueMode, practiceQueueIndex, practiceQueue.length, nextInQueue]);
+  }, [selectedSentence, bpm, isPracticeQueueMode, practiceQueueIndex, practiceQueue.length, nextInQueue, phase, recorder.isRecording]);
 
   const stopAnimation = useCallback(() => {
     setPhase("idle");
@@ -102,6 +108,7 @@ export default function ShadowReading() {
     setAnalysisResult(null);
     recorder.resetRecording();
     setSelectedSentence(selectedScene.sentences[index]);
+    pendingQueueJumpRef.current = false;
   };
 
   const handleStartRecording = useCallback(() => {
@@ -151,6 +158,16 @@ export default function ShadowReading() {
     }
   }, [recorder.audioBuffer, selectedSentence, phase]);
 
+  useEffect(() => {
+    if (phase === "result" && pendingQueueJumpRef.current) {
+      pendingQueueJumpRef.current = false;
+      setTimeout(() => {
+        nextInQueue();
+        setPhase("idle");
+      }, 1500);
+    }
+  }, [phase, nextInQueue]);
+
   const handlePlayRecording = useCallback(() => {
     if (recorder.audioUrl && audioRef.current) {
       audioRef.current.src = recorder.audioUrl;
@@ -172,6 +189,7 @@ export default function ShadowReading() {
     setAnalysisResult(null);
     setIsPlayingRecording(false);
     setPhase("idle");
+    pendingQueueJumpRef.current = false;
   }, [stopAnimation, recorder]);
 
   const getChunkBackgroundColor = (index: number, chunkScore?: ChunkScore) => {
