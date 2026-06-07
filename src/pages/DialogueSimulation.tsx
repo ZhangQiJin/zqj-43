@@ -52,6 +52,12 @@ export default function DialogueSimulation() {
   }, [currentTurnIndex]);
 
   useEffect(() => {
+    if (selectedDialogue && currentTurnIndex > 0 && dialoguePhase !== "finished" && dialoguePhase !== "idle") {
+      playTurnAnimation();
+    }
+  }, [currentTurnIndex, selectedDialogue, dialoguePhase, playTurnAnimation]);
+
+  useEffect(() => {
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
