@@ -46,7 +46,7 @@ interface ChallengeState {
   showAchievementModal: Achievement | null;
   generateDailyChallenge: () => void;
   setCurrentLevelIndex: (index: number) => void;
-  completeLevel: (levelId: number, score: number, accuracy: number) => boolean;
+  completeLevel: (levelId: number, score: number, accuracy: number) => { success: boolean; allCompleted: boolean };
   completeDailyChallenge: () => void;
   checkAndUnlockAchievements: () => void;
   closeAchievementModal: () => void;
@@ -225,13 +225,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   completeLevel: (levelId, score, accuracy) => {
     const state = get();
     const challenge = state.currentDailyChallenge;
-    if (!challenge) return false;
+    if (!challenge) return { success: false, allCompleted: false };
 
     const level = challenge.levels.find((l) => l.id === levelId);
-    if (!level || level.completed) return false;
+    if (!level || level.completed) return { success: false, allCompleted: false };
 
     if (accuracy < level.requiredAccuracy) {
-      return false;
+      return { success: false, allCompleted: false };
     }
 
     const updatedLevels = challenge.levels.map((l) =>
@@ -240,17 +240,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         : l
     );
 
-    const nextIndex = challenge.levels.findIndex((l) => !l.completed);
+    const nextIndex = updatedLevels.findIndex((l) => !l.completed);
+    const allCompleted = nextIndex === -1;
 
     set({
       currentDailyChallenge: {
         ...challenge,
         levels: updatedLevels,
       },
-      currentLevelIndex: nextIndex !== -1 ? nextIndex : state.currentLevelIndex,
+      currentLevelIndex: allCompleted ? state.currentLevelIndex : nextIndex,
     });
 
-    return true;
+    return { success: true, allCompleted };
   },
 
   completeDailyChallenge: () => {

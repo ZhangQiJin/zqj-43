@@ -174,11 +174,10 @@ export default function DailyChallenge() {
   const handleSubmitLevel = () => {
     if (!currentLevel || !stats) return;
 
-    const success = completeLevel(currentLevel.id, stats.score, stats.accuracy);
-    if (success) {
+    const result = completeLevel(currentLevel.id, stats.score, stats.accuracy);
+    if (result.success) {
       setShowResults(false);
-      const nextLevel = currentDailyChallenge?.levels.findIndex((l) => !l.completed);
-      if (nextLevel === -1) {
+      if (result.allCompleted) {
         completeDailyChallenge();
         setShowCompletion(true);
       }
