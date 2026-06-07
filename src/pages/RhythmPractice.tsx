@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Mic, Music, AlertTriangle, ListMusic, X } from "lucide-react";
+import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Mic, Music, AlertTriangle, ListMusic, X, Focus } from "lucide-react";
 import MouthAnimation from "@/components/MouthAnimation";
 import RhythmBar from "@/components/RhythmBar";
 import Waveform from "@/components/Waveform";
@@ -34,6 +34,8 @@ export default function RhythmPractice() {
     prevInQueue,
     clearPracticeQueue,
     getAllScenes,
+    isFocusMode,
+    startFocusMode,
   } = useAppStore();
 
   const scenes = getAllScenes();
@@ -296,51 +298,64 @@ export default function RhythmPractice() {
   const mouthIsPlaying = isPlaying || isPlayingRecording;
 
   return (
-    <div className="flex flex-col items-center space-y-8">
-      <div className="w-full">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          {scenes.map((scene) => (
+    <div className={`flex flex-col items-center space-y-8 transition-colors duration-500 ${isFocusMode ? "bg-gradient-to-br from-amber-50/50 to-green-50/50 -mx-4 -mt-8 px-4 pt-8 rounded-2xl" : ""}`}>
+      {!isFocusMode && (
+        <div className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              {scenes.map((scene) => (
+                <button
+                  key={scene.id}
+                  onClick={() => handleSwitchScene(scene.id)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedScene.id === scene.id
+                      ? "bg-blue-500 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {scene.name}
+                </button>
+              ))}
+            </div>
             <button
-              key={scene.id}
-              onClick={() => handleSwitchScene(scene.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                selectedScene.id === scene.id
-                  ? "bg-blue-500 text-white shadow-lg"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              onClick={startFocusMode}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-medium shadow-md hover:shadow-lg transition-all hover:scale-105"
             >
-              {scene.name}
+              <Focus size={16} />
+              专注模式
             </button>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="flex items-center gap-2 bg-gray-100 rounded-full p-1">
-        <button
-          onClick={() => handleSwitchMode(false)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-            !isRecordingMode
-              ? "bg-white text-blue-600 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <Music size={16} />
-          节奏练习
-        </button>
-        <button
-          onClick={() => handleSwitchMode(true)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-            isRecordingMode
-              ? "bg-white text-emerald-600 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <Mic size={16} />
-          录音对比
-        </button>
-      </div>
+      {!isFocusMode && (
+        <div className="flex items-center gap-2 bg-gray-100 rounded-full p-1">
+          <button
+            onClick={() => handleSwitchMode(false)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              !isRecordingMode
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Music size={16} />
+            节奏练习
+          </button>
+          <button
+            onClick={() => handleSwitchMode(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              isRecordingMode
+                ? "bg-white text-emerald-600 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Mic size={16} />
+            录音对比
+          </button>
+        </div>
+      )}
 
-      {isWrongSlicePractice && (
+      {!isFocusMode && isWrongSlicePractice && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -368,7 +383,7 @@ export default function RhythmPractice() {
         </motion.div>
       )}
 
-      {isPracticeQueueMode && practiceQueue.length > 0 && (
+      {!isFocusMode && isPracticeQueueMode && practiceQueue.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -492,22 +507,26 @@ export default function RhythmPractice() {
               </button>
             </div>
 
-            <div className="flex items-center gap-4">
-              <span className="text-gray-600 text-sm">速度:</span>
-              <input
-                type="range"
-                min="40"
-                max="120"
-                value={bpm}
-                onChange={(e) => setBpm(Number(e.target.value))}
-                className="w-40 accent-blue-500"
-              />
-              <span className="text-blue-500 font-bold w-12">{bpm}%</span>
-            </div>
+            {!isFocusMode && (
+              <div className="flex items-center gap-4">
+                <span className="text-gray-600 text-sm">速度:</span>
+                <input
+                  type="range"
+                  min="40"
+                  max="120"
+                  value={bpm}
+                  onChange={(e) => setBpm(Number(e.target.value))}
+                  className="w-40 accent-blue-500"
+                />
+                <span className="text-blue-500 font-bold w-12">{bpm}%</span>
+              </div>
+            )}
 
-            <p className="text-sm text-gray-500 text-center max-w-md">
-              💡 提示：观察口型变化，注意红色标记的重音位置，跟着节奏在心里默念
-            </p>
+            {!isFocusMode && (
+              <p className="text-sm text-gray-500 text-center max-w-md">
+                💡 提示：观察口型变化，注意红色标记的重音位置，跟着节奏在心里默念
+              </p>
+            )}
           </motion.div>
         ) : (
           <motion.div

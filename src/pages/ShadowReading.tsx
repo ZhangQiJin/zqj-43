@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star, ListMusic, X, Lightbulb } from "lucide-react";
+import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star, ListMusic, X, Lightbulb, Focus } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { analyzeRecording, type AnalysisResult, type ChunkScore } from "@/lib/audioAnalysis";
@@ -28,6 +28,8 @@ export default function ShadowReading() {
     clearPracticeQueue,
     setPracticeQueueIndex,
     getAllScenes,
+    isFocusMode,
+    startFocusMode,
   } = useAppStore();
 
   const scenes = getAllScenes();
@@ -241,32 +243,43 @@ export default function ShadowReading() {
   };
 
   return (
-    <div className="flex flex-col items-center space-y-6">
-      <div className="w-full">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          {scenes.map((scene) => (
+    <div className={`flex flex-col items-center space-y-6 transition-colors duration-500 ${isFocusMode ? "bg-gradient-to-br from-amber-50/50 to-green-50/50 -mx-4 -mt-8 px-4 pt-8 rounded-2xl" : ""}`}>
+      {!isFocusMode && (
+        <div className="w-full">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              {scenes.map((scene) => (
+                <button
+                  key={scene.id}
+                  onClick={() => {
+                    stopAnimation();
+                    setAnalysisResult(null);
+                    recorder.resetRecording();
+                    clearPracticeQueue();
+                    setSelectedScene(scene.id);
+                  }}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedScene.id === scene.id
+                      ? "bg-purple-500 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {scene.name}
+                </button>
+              ))}
+            </div>
             <button
-              key={scene.id}
-              onClick={() => {
-                stopAnimation();
-                setAnalysisResult(null);
-                recorder.resetRecording();
-                clearPracticeQueue();
-                setSelectedScene(scene.id);
-              }}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                selectedScene.id === scene.id
-                  ? "bg-purple-500 text-white shadow-lg"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              onClick={startFocusMode}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-medium shadow-md hover:shadow-lg transition-all hover:scale-105"
             >
-              {scene.name}
+              <Focus size={16} />
+              专注模式
             </button>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {isPracticeQueueMode && practiceQueue.length > 0 && (
+      {!isFocusMode && isPracticeQueueMode && practiceQueue.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -296,111 +309,113 @@ export default function ShadowReading() {
         </motion.div>
       )}
 
-      <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-3">
-          <h3 className="font-bold text-gray-700 mb-2">
-            {isPracticeQueueMode ? "练习队列" : "句型列表"}
-          </h3>
-          <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-            {(isPracticeQueueMode ? practiceQueue.map(q => q.sentence) : selectedScene.sentences).map((sentence, index) => {
-              const queueItem = isPracticeQueueMode ? practiceQueue[index] : null;
-              return (
-                <motion.div
-                  key={sentence.id + "-" + index}
-                  onClick={() => {
-                    if (isPracticeQueueMode) {
-                      stopAnimation();
-                      setAnalysisResult(null);
-                      recorder.resetRecording();
-                      const item = practiceQueue[index];
-                      const scene = scenes.find(s => s.id === item.sceneId);
-                      if (scene) {
-                        setSelectedScene(scene.id);
-                        setSelectedSentence(sentence);
-                        setBpm(sentence.bpm || 80);
-                        setPracticeQueueIndex(index);
-                      }
-                    } else {
-                      selectSentence(index);
-                    }
-                  }}
-                  className={`p-4 rounded-xl cursor-pointer transition-all ${
-                    selectedSentence?.id === sentence.id
-                      ? "bg-purple-100 border-2 border-purple-400 shadow-md"
-                      : "bg-white border border-gray-200 hover:border-purple-300"
-                  }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-sm font-medium ${
-                          selectedSentence?.id === sentence.id
-                            ? "text-purple-700"
-                            : "text-gray-700"
-                        }`}
-                      >
-                        {sentence.text}
-                      </p>
-                      {showTranslation && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {sentence.translation}
-                        </p>
-                      )}
-                      {isPracticeQueueMode && queueItem && (
-                        <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                          <ListMusic size={10} />
-                          {queueItem.sceneName}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-1 mt-2">
-                        {sentence.chunks.map((chunk, i) => (
-                          <div
-                            key={i}
-                            className={`h-1 rounded-full flex-1 ${
-                              chunk.isStressed ? "bg-red-400" : "bg-purple-300"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const scene = isPracticeQueueMode && queueItem
-                          ? scenes.find(s => s.id === queueItem.sceneId)
-                          : selectedScene;
+      <div className={`w-full ${isFocusMode ? "" : "grid grid-cols-1 lg:grid-cols-3 gap-6"}`}>
+        {!isFocusMode && (
+          <div className="lg:col-span-1 space-y-3">
+            <h3 className="font-bold text-gray-700 mb-2">
+              {isPracticeQueueMode ? "练习队列" : "句型列表"}
+            </h3>
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+              {(isPracticeQueueMode ? practiceQueue.map(q => q.sentence) : selectedScene.sentences).map((sentence, index) => {
+                const queueItem = isPracticeQueueMode ? practiceQueue[index] : null;
+                return (
+                  <motion.div
+                    key={sentence.id + "-" + index}
+                    onClick={() => {
+                      if (isPracticeQueueMode) {
+                        stopAnimation();
+                        setAnalysisResult(null);
+                        recorder.resetRecording();
+                        const item = practiceQueue[index];
+                        const scene = scenes.find(s => s.id === item.sceneId);
                         if (scene) {
-                          toggleFavorite(sentence, scene);
+                          setSelectedScene(scene.id);
+                          setSelectedSentence(sentence);
+                          setBpm(sentence.bpm || 80);
+                          setPracticeQueueIndex(index);
                         }
-                      }}
-                      className="p-1 rounded-full hover:bg-purple-50 transition-all shrink-0"
-                    >
-                      <motion.div
-                        key={isFavorite(sentence.id) ? "filled" : "empty"}
-                        initial={{ scale: 0.8, rotate: -30 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      >
-                        <Star
-                          size={16}
-                          className={
-                            isFavorite(sentence.id)
-                              ? "text-yellow-400 fill-yellow-400"
-                              : "text-gray-300"
+                      } else {
+                        selectSentence(index);
+                      }
+                    }}
+                    className={`p-4 rounded-xl cursor-pointer transition-all ${
+                      selectedSentence?.id === sentence.id
+                        ? "bg-purple-100 border-2 border-purple-400 shadow-md"
+                        : "bg-white border border-gray-200 hover:border-purple-300"
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-sm font-medium ${
+                            selectedSentence?.id === sentence.id
+                              ? "text-purple-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {sentence.text}
+                        </p>
+                        {showTranslation && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {sentence.translation}
+                          </p>
+                        )}
+                        {isPracticeQueueMode && queueItem && (
+                          <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                            <ListMusic size={10} />
+                            {queueItem.sceneName}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-1 mt-2">
+                          {sentence.chunks.map((chunk, i) => (
+                            <div
+                              key={i}
+                              className={`h-1 rounded-full flex-1 ${
+                                chunk.isStressed ? "bg-red-400" : "bg-purple-300"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const scene = isPracticeQueueMode && queueItem
+                            ? scenes.find(s => s.id === queueItem.sceneId)
+                            : selectedScene;
+                          if (scene) {
+                            toggleFavorite(sentence, scene);
                           }
-                        />
-                      </motion.div>
-                    </button>
-                  </div>
-                </motion.div>
-              );
-            })}
+                        }}
+                        className="p-1 rounded-full hover:bg-purple-50 transition-all shrink-0"
+                      >
+                        <motion.div
+                          key={isFavorite(sentence.id) ? "filled" : "empty"}
+                          initial={{ scale: 0.8, rotate: -30 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        >
+                          <Star
+                            size={16}
+                            className={
+                              isFavorite(sentence.id)
+                                ? "text-yellow-400 fill-yellow-400"
+                                : "text-gray-300"
+                            }
+                          />
+                        </motion.div>
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`${isFocusMode ? "w-full max-w-3xl mx-auto" : "lg:col-span-2"} space-y-6`}>
           {selectedSentence && (
             <AnimatePresence mode="wait">
               <motion.div
@@ -411,33 +426,37 @@ export default function ShadowReading() {
                 className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8 shadow-lg"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <span className="text-sm text-purple-500 font-medium">
-                    句子 {currentSentenceIndex + 1} / {selectedScene.sentences.length}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowText(!showText)}
-                      className={`p-2 rounded-lg transition-all ${
-                        showText
-                          ? "bg-purple-200 text-purple-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                      title={showText ? "隐藏原文" : "显示原文"}
-                    >
-                      {showText ? <Eye size={18} /> : <EyeOff size={18} />}
-                    </button>
-                    <button
-                      onClick={() => setShowTranslation(!showTranslation)}
-                      className={`p-2 rounded-lg transition-all ${
-                        showTranslation
-                          ? "bg-purple-200 text-purple-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                      title={showTranslation ? "隐藏翻译" : "显示翻译"}
-                    >
-                      <Volume2 size={18} />
-                    </button>
-                  </div>
+                  {!isFocusMode && (
+                    <span className="text-sm text-purple-500 font-medium">
+                      句子 {currentSentenceIndex + 1} / {selectedScene.sentences.length}
+                    </span>
+                  )}
+                  {!isFocusMode && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowText(!showText)}
+                        className={`p-2 rounded-lg transition-all ${
+                          showText
+                            ? "bg-purple-200 text-purple-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                        title={showText ? "隐藏原文" : "显示原文"}
+                      >
+                        {showText ? <Eye size={18} /> : <EyeOff size={18} />}
+                      </button>
+                      <button
+                        onClick={() => setShowTranslation(!showTranslation)}
+                        className={`p-2 rounded-lg transition-all ${
+                          showTranslation
+                            ? "bg-purple-200 text-purple-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                        title={showTranslation ? "隐藏翻译" : "显示翻译"}
+                      >
+                        <Volume2 size={18} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {showText && (
@@ -469,10 +488,12 @@ export default function ShadowReading() {
                         </PronunciationTip>
                       ))}
                     </div>
-                    <div className="flex items-center justify-center gap-1 mt-3 text-xs text-gray-500">
-                      <Lightbulb size={12} className="text-amber-500" />
-                      <span>悬停灯泡图标查看发音要诀和常见错误</span>
-                    </div>
+                    {!isFocusMode && (
+                      <div className="flex items-center justify-center gap-1 mt-3 text-xs text-gray-500">
+                        <Lightbulb size={12} className="text-amber-500" />
+                        <span>悬停灯泡图标查看发音要诀和常见错误</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -525,7 +546,7 @@ export default function ShadowReading() {
           )}
 
           <AnimatePresence mode="wait">
-            {analysisResult && phase === "result" && (
+            {!isFocusMode && analysisResult && phase === "result" && (
               <motion.div
                 key="result"
                 initial={{ opacity: 0, y: 20 }}
@@ -696,23 +717,27 @@ export default function ShadowReading() {
               </div>
             )}
 
-            <div className="flex items-center gap-4">
-              <span className="text-gray-600 text-sm">速度:</span>
-              <input
-                type="range"
-                min="40"
-                max="120"
-                value={bpm}
-                onChange={(e) => setBpm(Number(e.target.value))}
-                className="w-40 accent-purple-500"
-                disabled={phase === "playing" || phase === "recording"}
-              />
-              <span className="text-purple-500 font-bold w-12">{bpm}%</span>
-            </div>
+            {!isFocusMode && (
+              <div className="flex items-center gap-4">
+                <span className="text-gray-600 text-sm">速度:</span>
+                <input
+                  type="range"
+                  min="40"
+                  max="120"
+                  value={bpm}
+                  onChange={(e) => setBpm(Number(e.target.value))}
+                  className="w-40 accent-purple-500"
+                  disabled={phase === "playing" || phase === "recording"}
+                />
+                <span className="text-purple-500 font-bold w-12">{bpm}%</span>
+              </div>
+            )}
 
-            <p className="text-sm text-gray-500 text-center max-w-lg">
-              💡 提示：先点击"影子跟读"听一遍，播放完成后长按"长按录音"按钮跟读，松开结束录音，系统将自动评分
-            </p>
+            {!isFocusMode && (
+              <p className="text-sm text-gray-500 text-center max-w-lg">
+                💡 提示：先点击"影子跟读"听一遍，播放完成后长按"长按录音"按钮跟读，松开结束录音，系统将自动评分
+              </p>
+            )}
           </div>
         </div>
       </div>

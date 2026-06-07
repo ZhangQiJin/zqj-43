@@ -104,9 +104,20 @@ export interface QueueSentence {
   sceneName: string;
 }
 
+export type FocusModeDuration = 15 | 25 | 45;
+
 interface AppState extends ChallengeState {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+
+  isFocusMode: boolean;
+  focusModeDuration: FocusModeDuration;
+  focusModeTimeLeft: number;
+  setIsFocusMode: (value: boolean) => void;
+  setFocusModeDuration: (duration: FocusModeDuration) => void;
+  setFocusModeTimeLeft: (time: number) => void;
+  startFocusMode: () => void;
+  stopFocusMode: () => void;
 
   selectedScene: Scene;
   selectedSentence: Sentence | null;
@@ -278,6 +289,20 @@ const calculateConsecutiveDays = (records: CheckInRecord[]) => {
 export const useAppStore = create<AppState>((set, get) => ({
   activeTab: "rhythm",
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  isFocusMode: false,
+  focusModeDuration: 25,
+  focusModeTimeLeft: 25 * 60,
+  setIsFocusMode: (value) => set({ isFocusMode: value }),
+  setFocusModeDuration: (duration) => {
+    set({ focusModeDuration: duration, focusModeTimeLeft: duration * 60 });
+  },
+  setFocusModeTimeLeft: (time) => set({ focusModeTimeLeft: time }),
+  startFocusMode: () => {
+    const duration = get().focusModeDuration;
+    set({ isFocusMode: true, focusModeTimeLeft: duration * 60 });
+  },
+  stopFocusMode: () => set({ isFocusMode: false }),
 
   favorites: loadFavoritesFromStorage(),
 
