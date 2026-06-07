@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { Mic, BookOpen, Library, BarChart3, VolumeX } from "lucide-react";
+import { Mic, BookOpen, Library, BarChart3, VolumeX, BookX } from "lucide-react";
 import { useAppStore, TabType } from "@/store/useAppStore";
 import RhythmPractice from "./RhythmPractice";
 import ShadowReading from "./ShadowReading";
 import SceneLibrary from "./SceneLibrary";
 import SelfTest from "./SelfTest";
+import WrongWordBook from "./WrongWordBook";
 
 const tabs: { id: TabType; label: string; icon: React.ReactNode; color: string }[] = [
   {
@@ -31,6 +32,12 @@ const tabs: { id: TabType; label: string; icon: React.ReactNode; color: string }
     icon: <BarChart3 size={20} />,
     color: "emerald",
   },
+  {
+    id: "wrongWords",
+    label: "错词本",
+    icon: <BookX size={20} />,
+    color: "rose",
+  },
 ];
 
 const colorClasses: Record<string, { bg: string; text: string; border: string }> = {
@@ -54,6 +61,11 @@ const colorClasses: Record<string, { bg: string; text: string; border: string }>
     text: "text-emerald-500",
     border: "border-emerald-500",
   },
+  rose: {
+    bg: "bg-rose-500",
+    text: "text-rose-500",
+    border: "border-rose-500",
+  },
 };
 
 export default function Home() {
@@ -69,6 +81,8 @@ export default function Home() {
         return <SceneLibrary />;
       case "test":
         return <SelfTest />;
+      case "wrongWords":
+        return <WrongWordBook />;
       default:
         return <RhythmPractice />;
     }

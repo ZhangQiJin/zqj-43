@@ -21,6 +21,7 @@ export default function SelfTest() {
     setSelectedScene,
     bpm,
     setBpm,
+    addWrongSlice,
   } = useAppStore();
   const [isTesting, setIsTesting] = useState(false);
   const [currentChunkIndex, setCurrentChunkIndex] = useState(-1);
@@ -138,6 +139,22 @@ export default function SelfTest() {
   };
 
   const stats = calculateStats();
+
+  useEffect(() => {
+    if (showResults && selectedSentence && tapRecords.length > 0) {
+      tapRecords.forEach((record) => {
+        if (Math.abs(record.deviation) > 300 && record.index < selectedSentence.chunks.length) {
+          addWrongSlice({
+            chunk: selectedSentence.chunks[record.index],
+            chunkIndex: record.index,
+            sentence: selectedSentence,
+            scene: selectedScene,
+            deviation: Math.abs(record.deviation),
+          });
+        }
+      });
+    }
+  }, [showResults, tapRecords, selectedSentence, selectedScene, addWrongSlice]);
 
   const getScoreGrade = (score: number) => {
     if (score >= 90) return { grade: "S", color: "text-yellow-500", bg: "bg-yellow-100" };

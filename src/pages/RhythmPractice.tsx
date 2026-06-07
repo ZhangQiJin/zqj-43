@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Mic, Music } from "lucide-react";
+import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Mic, Music, AlertTriangle } from "lucide-react";
 import MouthAnimation from "@/components/MouthAnimation";
 import RhythmBar from "@/components/RhythmBar";
 import Waveform from "@/components/Waveform";
@@ -25,6 +25,10 @@ export default function RhythmPractice() {
     setIsPlayingRecording,
     setRecordingPlaybackTime,
     setCurrentChunkIndex,
+    isWrongSlicePractice,
+    highlightedChunkIndex,
+    setIsWrongSlicePractice,
+    setHighlightedChunkIndex,
   } = useAppStore();
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -211,7 +215,9 @@ export default function RhythmPractice() {
     stopAnimation();
     handleResetRecording();
     setSelectedScene(sceneId);
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, setSelectedScene]);
+    setIsWrongSlicePractice(false);
+    setHighlightedChunkIndex(null);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, setSelectedScene, setIsWrongSlicePractice, setHighlightedChunkIndex]);
 
   const handlePrevSentence = useCallback(() => {
     if (recorder.isRecording) {
@@ -225,7 +231,9 @@ export default function RhythmPractice() {
     handleResetRecording();
     const newIndex = Math.max(0, currentSentenceIndex - 1);
     setSelectedSentence(selectedScene.sentences[newIndex]);
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence]);
+    setIsWrongSlicePractice(false);
+    setHighlightedChunkIndex(null);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence, setIsWrongSlicePractice, setHighlightedChunkIndex]);
 
   const handleNextSentence = useCallback(() => {
     if (recorder.isRecording) {
@@ -242,7 +250,9 @@ export default function RhythmPractice() {
       currentSentenceIndex + 1
     );
     setSelectedSentence(selectedScene.sentences[newIndex]);
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence]);
+    setIsWrongSlicePractice(false);
+    setHighlightedChunkIndex(null);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence, setIsWrongSlicePractice, setHighlightedChunkIndex]);
 
   useEffect(() => {
     return () => {
@@ -307,6 +317,37 @@ export default function RhythmPractice() {
         </button>
       </div>
 
+      {isWrongSlicePractice && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-2xl"
+        >
+          <div className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <AlertTriangle size={18} />
+              </div>
+              <div>
+                <p className="font-bold">薄弱切片专项练习</p>
+                <p className="text-sm opacity-90">
+                  播放速度已降低 20%，紫色标记为需要重点练习的切片
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setIsWrongSlicePractice(false);
+                setHighlightedChunkIndex(null);
+              }}
+              className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all text-sm font-medium"
+            >
+              退出练习
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {selectedSentence && (
         <motion.div
           key={selectedSentence.id}
@@ -351,6 +392,7 @@ export default function RhythmPractice() {
             chunks={selectedSentence.chunks}
             currentIndex={currentChunkIndex}
             isPlaying={mouthIsPlaying}
+            highlightedIndex={isWrongSlicePractice ? highlightedChunkIndex : null}
           />
         </div>
       )}

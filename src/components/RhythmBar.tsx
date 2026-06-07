@@ -5,12 +5,14 @@ interface RhythmBarProps {
   chunks: Chunk[];
   currentIndex: number;
   isPlaying: boolean;
+  highlightedIndex?: number | null;
 }
 
 export default function RhythmBar({
   chunks,
   currentIndex,
   isPlaying,
+  highlightedIndex = null,
 }: RhythmBarProps) {
   const totalDuration = chunks.reduce((sum, chunk) => sum + chunk.duration, 0);
 
@@ -22,6 +24,20 @@ export default function RhythmBar({
             const widthPercent = (chunk.duration / totalDuration) * 100;
             const isActive = index === currentIndex;
             const isPast = index < currentIndex;
+            const isHighlighted = index === highlightedIndex;
+
+            let bgColor = "#E5E7EB";
+            if (isActive) {
+              bgColor = chunk.isStressed ? "#EF4444" : "#3B82F6";
+            } else if (isPast) {
+              bgColor = chunk.isStressed ? "#FCA5A5" : "#93C5FD";
+            } else if (isHighlighted) {
+              bgColor = "#A855F7";
+            }
+
+            let opacity = isHighlighted ? 0.8 : 0.3;
+            if (isActive) opacity = 1;
+            else if (isPast) opacity = 0.6;
 
             return (
               <motion.div
@@ -30,27 +46,23 @@ export default function RhythmBar({
                 style={{ width: `${widthPercent}%` }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{
-                  opacity: isActive ? 1 : isPast ? 0.6 : 0.3,
+                  opacity,
                   y: 0,
-                  backgroundColor: isActive
-                    ? chunk.isStressed
-                      ? "#EF4444"
-                      : "#3B82F6"
-                    : isPast
-                    ? chunk.isStressed
-                      ? "#FCA5A5"
-                      : "#93C5FD"
-                    : "#E5E7EB",
-                  scale: isActive ? 1.02 : 1,
+                  backgroundColor: bgColor,
+                  scale: isActive ? 1.02 : isHighlighted ? 1.01 : 1,
+                  boxShadow: isHighlighted && !isActive ? "0 0 0 2px #7C3AED" : "none",
                 }}
                 transition={{ duration: 0.2 }}
               >
                 {chunk.isStressed && (
                   <div className="absolute top-1 w-2 h-2 rounded-full bg-red-500" />
                 )}
+                {isHighlighted && !isActive && (
+                  <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-purple-600" />
+                )}
                 <span
                   className={`text-xs font-medium ${
-                    isActive ? "text-white" : "text-gray-500"
+                    isActive || isHighlighted ? "text-white" : "text-gray-500"
                   }`}
                 >
                   {chunk.text.trim()}
@@ -76,7 +88,7 @@ export default function RhythmBar({
         )}
       </div>
 
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-red-500" />
           <span className="text-sm text-gray-600">重音</span>
@@ -89,6 +101,12 @@ export default function RhythmBar({
           <div className="w-3 h-3 rounded-full bg-gray-300" />
           <span className="text-sm text-gray-600">待读</span>
         </div>
+        {highlightedIndex !== null && (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-purple-500" />
+            <span className="text-sm text-gray-600">薄弱切片</span>
+          </div>
+        )}
       </div>
     </div>
   );

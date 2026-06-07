@@ -1,13 +1,23 @@
 import { create } from "zustand";
-import { scenes, Sentence, Scene } from "@/data/scenes";
+import { scenes, Sentence, Scene, Chunk } from "@/data/scenes";
 
-export type TabType = "rhythm" | "shadow" | "library" | "test";
+export type TabType = "rhythm" | "shadow" | "library" | "test" | "wrongWords";
 
 export interface TapRecord {
   index: number;
   timestamp: number;
   expectedTime: number;
   deviation: number;
+}
+
+export interface WrongSlice {
+  id: string;
+  chunk: Chunk;
+  chunkIndex: number;
+  sentence: Sentence;
+  scene: Scene;
+  deviation: number;
+  addedAt: number;
 }
 
 interface AppState {
@@ -37,6 +47,16 @@ interface AppState {
   setIsRecordingMode: (mode: boolean) => void;
   setIsPlayingRecording: (playing: boolean) => void;
   setRecordingPlaybackTime: (time: number) => void;
+
+  wrongSlices: WrongSlice[];
+  addWrongSlice: (slice: Omit<WrongSlice, "id" | "addedAt">) => void;
+  removeWrongSlice: (id: string) => void;
+  clearWrongSlices: () => void;
+
+  isWrongSlicePractice: boolean;
+  highlightedChunkIndex: number | null;
+  setIsWrongSlicePractice: (value: boolean) => void;
+  setHighlightedChunkIndex: (index: number | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -70,4 +90,32 @@ export const useAppStore = create<AppState>((set) => ({
   setIsRecordingMode: (mode) => set({ isRecordingMode: mode }),
   setIsPlayingRecording: (playing) => set({ isPlayingRecording: playing }),
   setRecordingPlaybackTime: (time) => set({ recordingPlaybackTime: time }),
+
+  wrongSlices: [],
+  addWrongSlice: (slice) =>
+    set((state) => {
+      const exists = state.wrongSlices.some(
+        (s) =>
+          s.sentence.id === slice.sentence.id &&
+          s.chunkIndex === slice.chunkIndex
+      );
+      if (exists) return state;
+      const newSlice: WrongSlice = {
+        ...slice,
+        id: `${slice.sentence.id}-${slice.chunkIndex}-${Date.now()}`,
+        addedAt: Date.now(),
+      };
+      return { wrongSlices: [...state.wrongSlices, newSlice] };
+    }),
+  removeWrongSlice: (id) =>
+    set((state) => ({
+      wrongSlices: state.wrongSlices.filter((s) => s.id !== id),
+    })),
+  clearWrongSlices: () => set({ wrongSlices: [] }),
+
+  isWrongSlicePractice: false,
+  highlightedChunkIndex: null,
+  setIsWrongSlicePractice: (value) => set({ isWrongSlicePractice: value }),
+  setHighlightedChunkIndex: (index) =>
+    set({ highlightedChunkIndex: index }),
 }));
