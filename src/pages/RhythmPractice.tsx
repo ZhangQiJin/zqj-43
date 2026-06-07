@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Mic, Music, AlertTriangle } from "lucide-react";
+import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Mic, Music, AlertTriangle, ListMusic, X } from "lucide-react";
 import MouthAnimation from "@/components/MouthAnimation";
 import RhythmBar from "@/components/RhythmBar";
 import Waveform from "@/components/Waveform";
@@ -28,6 +28,12 @@ export default function RhythmPractice() {
     isWrongSlicePractice,
     highlightedChunkIndex,
     exitWrongSlicePractice,
+    practiceQueue,
+    practiceQueueIndex,
+    isPracticeQueueMode,
+    nextInQueue,
+    prevInQueue,
+    clearPracticeQueue,
   } = useAppStore();
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -94,8 +100,14 @@ export default function RhythmPractice() {
       setIsPlaying(false);
       setLocalChunkIndex(-1);
       setCurrentChunkIndex(-1);
+      
+      if (isPracticeQueueMode && practiceQueueIndex < practiceQueue.length - 1) {
+        setTimeout(() => {
+          nextInQueue();
+        }, 800);
+      }
     }, delay);
-  }, [selectedSentence, bpm, setCurrentChunkIndex]);
+  }, [selectedSentence, bpm, setCurrentChunkIndex, isPracticeQueueMode, practiceQueueIndex, practiceQueue.length, nextInQueue]);
 
   const stopAnimation = useCallback(() => {
     setIsPlaying(false);
@@ -213,9 +225,10 @@ export default function RhythmPractice() {
     }
     stopAnimation();
     handleResetRecording();
+    clearPracticeQueue();
     setSelectedScene(sceneId);
     exitWrongSlicePractice();
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, setSelectedScene, exitWrongSlicePractice]);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, clearPracticeQueue, setSelectedScene, exitWrongSlicePractice]);
 
   const handlePrevSentence = useCallback(() => {
     if (recorder.isRecording) {
@@ -227,10 +240,16 @@ export default function RhythmPractice() {
     }
     stopAnimation();
     handleResetRecording();
-    const newIndex = Math.max(0, currentSentenceIndex - 1);
-    setSelectedSentence(selectedScene.sentences[newIndex]);
+    
+    if (isPracticeQueueMode) {
+      prevInQueue();
+    } else {
+      const newIndex = Math.max(0, currentSentenceIndex - 1);
+      setSelectedSentence(selectedScene.sentences[newIndex]);
+    }
+    
     exitWrongSlicePractice();
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence, exitWrongSlicePractice]);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, isPracticeQueueMode, prevInQueue, currentSentenceIndex, selectedScene, setSelectedSentence, exitWrongSlicePractice]);
 
   const handleNextSentence = useCallback(() => {
     if (recorder.isRecording) {
@@ -242,13 +261,19 @@ export default function RhythmPractice() {
     }
     stopAnimation();
     handleResetRecording();
-    const newIndex = Math.min(
-      selectedScene.sentences.length - 1,
-      currentSentenceIndex + 1
-    );
-    setSelectedSentence(selectedScene.sentences[newIndex]);
+    
+    if (isPracticeQueueMode) {
+      nextInQueue();
+    } else {
+      const newIndex = Math.min(
+        selectedScene.sentences.length - 1,
+        currentSentenceIndex + 1
+      );
+      setSelectedSentence(selectedScene.sentences[newIndex]);
+    }
+    
     exitWrongSlicePractice();
-  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, currentSentenceIndex, selectedScene, setSelectedSentence, exitWrongSlicePractice]);
+  }, [recorder, isPlayingRecording, handlePlaybackEnded, player, stopAnimation, handleResetRecording, isPracticeQueueMode, nextInQueue, currentSentenceIndex, selectedScene, setSelectedSentence, exitWrongSlicePractice]);
 
   useEffect(() => {
     return () => {
@@ -341,6 +366,36 @@ export default function RhythmPractice() {
         </motion.div>
       )}
 
+      {isPracticeQueueMode && practiceQueue.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-2xl"
+        >
+          <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 px-6 py-3 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center">
+                <ListMusic size={16} className="text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-amber-800">收藏练习队列</p>
+                <p className="text-sm text-amber-600">
+                  第 {practiceQueueIndex + 1} / {practiceQueue.length} 句 · 
+                  当前场景: {practiceQueue[practiceQueueIndex]?.sceneName}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={clearPracticeQueue}
+              className="p-2 rounded-lg hover:bg-amber-100 transition-all text-amber-600"
+              title="退出队列模式"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {selectedSentence && (
         <motion.div
           key={selectedSentence.id}
@@ -358,7 +413,11 @@ export default function RhythmPractice() {
       <div className="flex items-center justify-center gap-8">
         <button
           onClick={handlePrevSentence}
-          disabled={currentSentenceIndex <= 0}
+          disabled={
+            isPracticeQueueMode
+              ? practiceQueueIndex <= 0
+              : currentSentenceIndex <= 0
+          }
           className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
           <ChevronLeft size={24} />
@@ -372,7 +431,11 @@ export default function RhythmPractice() {
 
         <button
           onClick={handleNextSentence}
-          disabled={currentSentenceIndex >= selectedScene.sentences.length - 1}
+          disabled={
+            isPracticeQueueMode
+              ? practiceQueueIndex >= practiceQueue.length - 1
+              : currentSentenceIndex >= selectedScene.sentences.length - 1
+          }
           className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
           <ChevronRight size={24} />

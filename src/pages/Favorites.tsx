@@ -13,6 +13,7 @@ export default function Favorites() {
     setActiveTab,
     setBpm,
     setIsPlaying,
+    startPracticeQueue,
   } = useAppStore();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
@@ -49,15 +50,13 @@ export default function Favorites() {
   const handleQuickPractice = (mode: "rhythm" | "shadow") => {
     if (favorites.length === 0) return;
 
-    const firstFavorite = favorites[0];
-    const scene = scenes.find((s) => s.id === firstFavorite.sceneId);
-    if (!scene) return;
+    const queue = favorites.map((fav) => ({
+      sentence: fav.sentence,
+      sceneId: fav.sceneId,
+      sceneName: fav.sceneName,
+    }));
 
-    setSelectedScene(scene.id);
-    setSelectedSentence(firstFavorite.sentence);
-    setBpm(firstFavorite.sentence.bpm || 80);
-    setIsPlaying(false);
-    setActiveTab(mode);
+    startPracticeQueue(queue, mode);
   };
 
   const hasFavorites = favorites.length > 0;
@@ -203,34 +202,30 @@ export default function Favorites() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              const scene = scenes.find((s) => s.id === fav.sceneId);
-                              if (scene) {
-                                setSelectedScene(scene.id);
-                                setSelectedSentence(fav.sentence);
-                                setBpm(fav.sentence.bpm || 80);
-                                setIsPlaying(false);
-                                setActiveTab("rhythm");
-                              }
+                              const queue = favorites.map((f) => ({
+                                sentence: f.sentence,
+                                sceneId: f.sceneId,
+                                sceneName: f.sceneName,
+                              }));
+                              startPracticeQueue(queue, "rhythm");
                             }}
                             className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all"
-                            title="口型练习"
+                            title="从这句开始口型练习"
                           >
                             <Mic size={18} />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              const scene = scenes.find((s) => s.id === fav.sceneId);
-                              if (scene) {
-                                setSelectedScene(scene.id);
-                                setSelectedSentence(fav.sentence);
-                                setBpm(fav.sentence.bpm || 80);
-                                setIsPlaying(false);
-                                setActiveTab("shadow");
-                              }
+                              const queue = favorites.map((f) => ({
+                                sentence: f.sentence,
+                                sceneId: f.sceneId,
+                                sceneName: f.sceneName,
+                              }));
+                              startPracticeQueue(queue, "shadow");
                             }}
                             className="p-2 rounded-xl bg-purple-50 text-purple-500 hover:bg-purple-100 transition-all"
-                            title="影子跟读"
+                            title="从这句开始影子跟读"
                           >
                             <BookOpen size={18} />
                           </button>

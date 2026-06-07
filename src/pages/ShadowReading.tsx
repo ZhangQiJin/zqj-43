@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star } from "lucide-react";
+import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star, ListMusic, X } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { scenes } from "@/data/scenes";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
@@ -20,6 +20,13 @@ export default function ShadowReading() {
     setBpm,
     toggleFavorite,
     isFavorite,
+    practiceQueue,
+    practiceQueueIndex,
+    isPracticeQueueMode,
+    nextInQueue,
+    prevInQueue,
+    clearPracticeQueue,
+    setPracticeQueueIndex,
   } = useAppStore();
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -61,8 +68,15 @@ export default function ShadowReading() {
     timeoutRef.current = setTimeout(() => {
       setCurrentChunkIndex(-1);
       setPhase("readyToRecord");
+      
+      if (isPracticeQueueMode && practiceQueueIndex < practiceQueue.length - 1) {
+        setTimeout(() => {
+          nextInQueue();
+          setPhase("idle");
+        }, 1200);
+      }
     }, delay);
-  }, [selectedSentence, bpm]);
+  }, [selectedSentence, bpm, isPracticeQueueMode, practiceQueueIndex, practiceQueue.length, nextInQueue]);
 
   const stopAnimation = useCallback(() => {
     setPhase("idle");
@@ -206,6 +220,7 @@ export default function ShadowReading() {
                 stopAnimation();
                 setAnalysisResult(null);
                 recorder.resetRecording();
+                clearPracticeQueue();
                 setSelectedScene(scene.id);
               }}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
@@ -220,75 +235,137 @@ export default function ShadowReading() {
         </div>
       </div>
 
+      {isPracticeQueueMode && practiceQueue.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-3xl mx-auto mb-4"
+        >
+          <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 px-6 py-3 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center">
+                <ListMusic size={16} className="text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-amber-800">收藏练习队列</p>
+                <p className="text-sm text-amber-600">
+                  第 {practiceQueueIndex + 1} / {practiceQueue.length} 句 · 
+                  当前场景: {practiceQueue[practiceQueueIndex]?.sceneName}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={clearPracticeQueue}
+              className="p-2 rounded-lg hover:bg-amber-100 transition-all text-amber-600"
+              title="退出队列模式"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-3">
-          <h3 className="font-bold text-gray-700 mb-2">句型列表</h3>
+          <h3 className="font-bold text-gray-700 mb-2">
+            {isPracticeQueueMode ? "练习队列" : "句型列表"}
+          </h3>
           <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-            {selectedScene.sentences.map((sentence, index) => (
-              <motion.div
-                key={sentence.id}
-                onClick={() => selectSentence(index)}
-                className={`p-4 rounded-xl cursor-pointer transition-all ${
-                  selectedSentence?.id === sentence.id
-                    ? "bg-purple-100 border-2 border-purple-400 shadow-md"
-                    : "bg-white border border-gray-200 hover:border-purple-300"
-                }`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`text-sm font-medium ${
-                        selectedSentence?.id === sentence.id
-                          ? "text-purple-700"
-                          : "text-gray-700"
-                      }`}
-                    >
-                      {sentence.text}
-                    </p>
-                    {showTranslation && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {sentence.translation}
+            {(isPracticeQueueMode ? practiceQueue.map(q => q.sentence) : selectedScene.sentences).map((sentence, index) => {
+              const queueItem = isPracticeQueueMode ? practiceQueue[index] : null;
+              return (
+                <motion.div
+                  key={sentence.id + "-" + index}
+                  onClick={() => {
+                    if (isPracticeQueueMode) {
+                      stopAnimation();
+                      setAnalysisResult(null);
+                      recorder.resetRecording();
+                      const item = practiceQueue[index];
+                      const scene = scenes.find(s => s.id === item.sceneId);
+                      if (scene) {
+                        setSelectedScene(scene.id);
+                        setSelectedSentence(sentence);
+                        setBpm(sentence.bpm || 80);
+                        setPracticeQueueIndex(index);
+                      }
+                    } else {
+                      selectSentence(index);
+                    }
+                  }}
+                  className={`p-4 rounded-xl cursor-pointer transition-all ${
+                    selectedSentence?.id === sentence.id
+                      ? "bg-purple-100 border-2 border-purple-400 shadow-md"
+                      : "bg-white border border-gray-200 hover:border-purple-300"
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`text-sm font-medium ${
+                          selectedSentence?.id === sentence.id
+                            ? "text-purple-700"
+                            : "text-gray-700"
+                        }`}
+                      >
+                        {sentence.text}
                       </p>
-                    )}
-                    <div className="flex items-center gap-1 mt-2">
-                      {sentence.chunks.map((chunk, i) => (
-                        <div
-                          key={i}
-                          className={`h-1 rounded-full flex-1 ${
-                            chunk.isStressed ? "bg-red-400" : "bg-purple-300"
-                          }`}
-                        />
-                      ))}
+                      {showTranslation && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {sentence.translation}
+                        </p>
+                      )}
+                      {isPracticeQueueMode && queueItem && (
+                        <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                          <ListMusic size={10} />
+                          {queueItem.sceneName}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1 mt-2">
+                        {sentence.chunks.map((chunk, i) => (
+                          <div
+                            key={i}
+                            className={`h-1 rounded-full flex-1 ${
+                              chunk.isStressed ? "bg-red-400" : "bg-purple-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(sentence, selectedScene);
-                    }}
-                    className="p-1 rounded-full hover:bg-purple-50 transition-all shrink-0"
-                  >
-                    <motion.div
-                      key={isFavorite(sentence.id) ? "filled" : "empty"}
-                      initial={{ scale: 0.8, rotate: -30 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    >
-                      <Star
-                        size={16}
-                        className={
-                          isFavorite(sentence.id)
-                            ? "text-yellow-400 fill-yellow-400"
-                            : "text-gray-300"
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const scene = isPracticeQueueMode && queueItem
+                          ? scenes.find(s => s.id === queueItem.sceneId)
+                          : selectedScene;
+                        if (scene) {
+                          toggleFavorite(sentence, scene);
                         }
-                      />
-                    </motion.div>
-                  </button>
-                </div>
-              </motion.div>
-            ))}
+                      }}
+                      className="p-1 rounded-full hover:bg-purple-50 transition-all shrink-0"
+                    >
+                      <motion.div
+                        key={isFavorite(sentence.id) ? "filled" : "empty"}
+                        initial={{ scale: 0.8, rotate: -30 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      >
+                        <Star
+                          size={16}
+                          className={
+                            isFavorite(sentence.id)
+                              ? "text-yellow-400 fill-yellow-400"
+                              : "text-gray-300"
+                          }
+                        />
+                      </motion.div>
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
 

@@ -97,6 +97,12 @@ export interface FavoriteSentence {
   addedAt: number;
 }
 
+export interface QueueSentence {
+  sentence: Sentence;
+  sceneId: string;
+  sceneName: string;
+}
+
 interface AppState extends ChallengeState {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -160,6 +166,17 @@ interface AppState extends ChallengeState {
   removeFavorites: (sentenceIds: string[]) => void;
   clearFavorites: () => void;
   isFavorite: (sentenceId: string) => boolean;
+
+  practiceQueue: QueueSentence[];
+  practiceQueueIndex: number;
+  isPracticeQueueMode: boolean;
+  setPracticeQueue: (queue: QueueSentence[]) => void;
+  setPracticeQueueIndex: (index: number) => void;
+  setIsPracticeQueueMode: (mode: boolean) => void;
+  startPracticeQueue: (queue: QueueSentence[], mode: TabType) => void;
+  nextInQueue: () => void;
+  prevInQueue: () => void;
+  clearPracticeQueue: () => void;
 }
 
 const FAVORITES_STORAGE_KEY = "silent-speaking-favorites";
@@ -228,6 +245,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   favorites: loadFavoritesFromStorage(),
+
+  practiceQueue: [],
+  practiceQueueIndex: 0,
+  isPracticeQueueMode: false,
 
   currentDailyChallenge: null,
   currentLevelIndex: 0,
@@ -543,5 +564,81 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   isFavorite: (sentenceId) => {
     return get().favorites.some((f) => f.id === sentenceId);
+  },
+
+  setPracticeQueue: (queue) => set({ practiceQueue: queue }),
+  setPracticeQueueIndex: (index) => set({ practiceQueueIndex: index }),
+  setIsPracticeQueueMode: (mode) => set({ isPracticeQueueMode: mode }),
+
+  startPracticeQueue: (queue, mode) => {
+    if (queue.length === 0) return;
+    const firstItem = queue[0];
+    const scene = scenes.find((s) => s.id === firstItem.sceneId);
+    if (!scene) return;
+
+    set({
+      practiceQueue: queue,
+      practiceQueueIndex: 0,
+      isPracticeQueueMode: true,
+      selectedScene: scene,
+      selectedSentence: firstItem.sentence,
+      bpm: firstItem.sentence.bpm || 80,
+      isPlaying: false,
+      currentChunkIndex: -1,
+    });
+
+    get().setActiveTab(mode);
+  },
+
+  nextInQueue: () => {
+    const state = get();
+    if (!state.isPracticeQueueMode || state.practiceQueue.length === 0) return;
+
+    const nextIndex = state.practiceQueueIndex + 1;
+    if (nextIndex >= state.practiceQueue.length) {
+      return;
+    }
+
+    const nextItem = state.practiceQueue[nextIndex];
+    const scene = scenes.find((s) => s.id === nextItem.sceneId);
+    if (!scene) return;
+
+    set({
+      practiceQueueIndex: nextIndex,
+      selectedScene: scene,
+      selectedSentence: nextItem.sentence,
+      bpm: nextItem.sentence.bpm || 80,
+      isPlaying: false,
+      currentChunkIndex: -1,
+    });
+  },
+
+  prevInQueue: () => {
+    const state = get();
+    if (!state.isPracticeQueueMode || state.practiceQueue.length === 0) return;
+
+    const prevIndex = state.practiceQueueIndex - 1;
+    if (prevIndex < 0) return;
+
+    const prevItem = state.practiceQueue[prevIndex];
+    const scene = scenes.find((s) => s.id === prevItem.sceneId);
+    if (!scene) return;
+
+    set({
+      practiceQueueIndex: prevIndex,
+      selectedScene: scene,
+      selectedSentence: prevItem.sentence,
+      bpm: prevItem.sentence.bpm || 80,
+      isPlaying: false,
+      currentChunkIndex: -1,
+    });
+  },
+
+  clearPracticeQueue: () => {
+    set({
+      practiceQueue: [],
+      practiceQueueIndex: 0,
+      isPracticeQueueMode: false,
+    });
   },
 }));
