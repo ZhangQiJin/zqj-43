@@ -154,6 +154,16 @@ export default function SentenceEditor({
     onClose();
   }, [onClose]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check } from "lucide-react";
 import { iconOptions } from "@/data/icons";
@@ -17,6 +17,25 @@ export default function CreateSceneModal({ isOpen, onClose, onCreated }: CreateS
   const [description, setDescription] = useState("");
   const [selectedIcon, setSelectedIcon] = useState(iconOptions[0].name);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleClose = () => {
+    setName("");
+    setNameEn("");
+    setDescription("");
+    setSelectedIcon(iconOptions[0].name);
+    setErrors({});
+    onClose();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleClose]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -42,17 +61,8 @@ export default function CreateSceneModal({ isOpen, onClose, onCreated }: CreateS
     setDescription("");
     setSelectedIcon(iconOptions[0].name);
     setErrors({});
-    onClose();
+    handleClose();
     onCreated?.(newScene.id);
-  };
-
-  const handleClose = () => {
-    setName("");
-    setNameEn("");
-    setDescription("");
-    setSelectedIcon(iconOptions[0].name);
-    setErrors({});
-    onClose();
   };
 
   return (

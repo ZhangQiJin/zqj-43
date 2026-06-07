@@ -145,16 +145,29 @@ export default function SceneLibrary() {
                 onClick={() => setSelectedSceneId(scene.id)}
                 className={`relative overflow-hidden rounded-2xl p-6 cursor-pointer group shadow-lg hover:shadow-2xl transition-all hover:scale-105 ${
                   scene.isCustom
-                    ? `border-2 border-dashed border-gray-300 bg-gradient-to-br ${getSceneColor(scene)} bg-opacity-10`
+                    ? `border-2 border-dashed border-gray-300 bg-white hover:border-gray-400`
                     : `bg-gradient-to-br ${getSceneColor(scene)} text-white`
                 }`}
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+                {scene.isCustom ? (
+                  <>
+                    <div
+                      className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${getIconColor(scene.icon)} rounded-full -translate-y-1/2 translate-x-1/2 opacity-10`}
+                    />
+                    <div
+                      className={`absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-br ${getIconColor(scene.icon)} rounded-full translate-y-1/2 -translate-x-1/2 opacity-10`}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+                  </>
+                )}
 
                 {scene.isCustom && (
                   <div className="absolute top-3 right-3 z-20">
-                    <span className="flex items-center gap-1 bg-white/90 text-gray-700 text-xs font-medium px-2 py-1 rounded-full">
+                    <span className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs font-medium px-2 py-1 rounded-full">
                       <Tag size={12} />
                       自定义
                     </span>
@@ -162,8 +175,10 @@ export default function SceneLibrary() {
                 )}
 
                 <div className="relative z-10">
-                  <div className={`mb-4 ${scene.isCustom ? "text-gray-700" : "text-white"}`}>
-                    {renderIcon(scene.icon)}
+                  <div className={`mb-4 ${scene.isCustom ? "" : "text-white"}`}>
+                    <div className={scene.isCustom ? `p-2 rounded-lg bg-gradient-to-br ${getIconColor(scene.icon)} inline-block text-white` : ""}>
+                      {renderIcon(scene.icon, scene.isCustom ? 24 : 32)}
+                    </div>
                   </div>
                   <h3 className={`text-2xl font-bold mb-1 ${scene.isCustom ? "text-gray-800" : "text-white"}`}>
                     {scene.name}
@@ -188,7 +203,7 @@ export default function SceneLibrary() {
                     <ChevronRight
                       size={20}
                       className={`group-hover:translate-x-1 transition-transform ${
-                        scene.isCustom ? "text-gray-500" : "text-white"
+                        scene.isCustom ? "text-gray-400" : "text-white"
                       }`}
                     />
                   </div>
