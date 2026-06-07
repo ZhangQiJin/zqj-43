@@ -9,7 +9,9 @@ import {
   Edit3,
   Trash2,
   Tag,
+  Lightbulb,
 } from "lucide-react";
+import PronunciationTip from "@/components/PronunciationTip";
 import { scenes, Sentence } from "@/data/scenes";
 import { useAppStore } from "@/store/useAppStore";
 import { getIconComponent, getIconColor } from "@/data/icons";
@@ -414,12 +416,31 @@ export default function SceneLibrary() {
                             </span>
                             <BookOpen size={16} className="text-green-500" />
                           </div>
-                          <p className="text-xl font-bold text-gray-700 leading-relaxed mb-2">
+                          <p className="text-xl font-bold text-gray-700 leading-relaxed mb-3">
                             {sentence.translation}
                           </p>
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {sentence.chunks.map((chunk, i) => (
+                              <PronunciationTip key={i} chunk={chunk}>
+                                <span
+                                  className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                    chunk.isStressed
+                                      ? "bg-red-100 text-red-700 border border-red-200"
+                                      : "bg-white text-gray-600 border border-gray-200"
+                                  }`}
+                                >
+                                  {chunk.text.trim() || " "}
+                                </span>
+                              </PronunciationTip>
+                            ))}
+                          </div>
                           <p className="text-sm text-gray-500 mt-auto">
                             原句: {sentence.text}
                           </p>
+                          <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                            <Lightbulb size={12} className="text-amber-500" />
+                            <span>悬停灯泡图标查看发音要诀</span>
+                          </div>
                         </div>
                       </motion.div>
                     </div>

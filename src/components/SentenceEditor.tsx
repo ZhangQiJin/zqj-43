@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, Bold, Clock, Scissors, Merge, RefreshCw } from "lucide-react";
+import { X, Plus, Minus, Bold, Clock, Scissors, Merge, RefreshCw, Lightbulb, AlertTriangle } from "lucide-react";
 import { Chunk, Sentence } from "@/data/scenes";
 
 interface SentenceEditorProps {
@@ -99,7 +99,10 @@ export default function SentenceEditor({
       const firstHalf = chunk.text.slice(0, mid);
       const secondHalf = chunk.text.slice(mid);
       const newChunks = [...prev];
-      newChunks.splice(index, 1, { ...chunk, text: firstHalf }, { ...chunk, text: secondHalf });
+      newChunks.splice(index, 1, 
+        { ...chunk, text: firstHalf, pronunciationTip: undefined, commonError: undefined }, 
+        { ...chunk, text: secondHalf, pronunciationTip: undefined, commonError: undefined }
+      );
       return newChunks;
     });
   }, []);
@@ -112,6 +115,8 @@ export default function SentenceEditor({
         text: newChunks[index].text + newChunks[index + 1].text,
         isStressed: newChunks[index].isStressed || newChunks[index + 1].isStressed,
         duration: newChunks[index].duration + newChunks[index + 1].duration,
+        pronunciationTip: newChunks[index].pronunciationTip || newChunks[index + 1].pronunciationTip,
+        commonError: newChunks[index].commonError || newChunks[index + 1].commonError,
       };
       newChunks.splice(index, 2, merged);
       return newChunks;
@@ -283,7 +288,7 @@ export default function SentenceEditor({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="p-4 bg-blue-50 rounded-xl border border-blue-100"
+                  className="p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-4"
                 >
                   <h4 className="font-medium text-gray-800 mb-3">
                     编辑切片："{chunks[selectedChunkIndex].text}"
@@ -338,6 +343,51 @@ export default function SentenceEditor({
                       <Merge size={16} />
                       <span className="text-sm">合并</span>
                     </button>
+                  </div>
+
+                  <div className="space-y-3 pt-2 border-t border-blue-200">
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                        <Lightbulb size={14} className="text-amber-500" />
+                        发音要诀
+                      </label>
+                      <input
+                        type="text"
+                        value={chunks[selectedChunkIndex].pronunciationTip || ""}
+                        onChange={(e) => {
+                          setChunks((prev) =>
+                            prev.map((chunk, i) =>
+                              i === selectedChunkIndex
+                                ? { ...chunk, pronunciationTip: e.target.value }
+                                : chunk
+                            )
+                          );
+                        }}
+                        placeholder="输入发音要诀，如：此处为爆破音，需短促有力"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                        <AlertTriangle size={14} className="text-red-500" />
+                        常见错误
+                      </label>
+                      <input
+                        type="text"
+                        value={chunks[selectedChunkIndex].commonError || ""}
+                        onChange={(e) => {
+                          setChunks((prev) =>
+                            prev.map((chunk, i) =>
+                              i === selectedChunkIndex
+                                ? { ...chunk, commonError: e.target.value }
+                                : chunk
+                            )
+                          );
+                        }}
+                        placeholder="输入常见错误，如：不要读成/ziː/，正确发音应为/s/+"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
                   </div>
                 </motion.div>
               )}

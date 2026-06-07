@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star, ListMusic, X } from "lucide-react";
+import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star, ListMusic, X, Lightbulb } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { analyzeRecording, type AnalysisResult, type ChunkScore } from "@/lib/audioAnalysis";
 import RadarChart from "@/components/RadarChart";
 import RecordingControls from "@/components/RecordingControls";
+import PronunciationTip from "@/components/PronunciationTip";
 
 type Phase = "idle" | "playing" | "readyToRecord" | "recording" | "analyzing" | "result";
 
@@ -443,29 +444,34 @@ export default function ShadowReading() {
                   <div className="mb-6">
                     <div className="flex flex-wrap gap-2 justify-center">
                       {selectedSentence.chunks.map((chunk, index) => (
-                        <motion.span
-                          key={index}
-                          className={`inline-block px-3 py-2 rounded-lg text-xl font-medium transition-all ${getChunkBackgroundColor(
-                            index,
-                            analysisResult?.chunkScores[index]
-                          )}`}
-                          animate={{
-                            scale: index === currentChunkIndex ? 1.1 : 1,
-                          }}
-                        >
-                          {chunk.text}
-                          {chunk.isStressed && (
-                            <span className="block text-xs text-center mt-1 opacity-70">
-                              重音
-                            </span>
-                          )}
-                          {analysisResult?.chunkScores[index] && (
-                            <span className="block text-xs text-center mt-1 font-bold">
-                              {analysisResult.chunkScores[index].overall}分
-                            </span>
-                          )}
-                        </motion.span>
+                        <PronunciationTip key={index} chunk={chunk}>
+                          <motion.span
+                            className={`inline-block px-3 py-2 rounded-lg text-xl font-medium transition-all ${getChunkBackgroundColor(
+                              index,
+                              analysisResult?.chunkScores[index]
+                            )}`}
+                            animate={{
+                              scale: index === currentChunkIndex ? 1.1 : 1,
+                            }}
+                          >
+                            {chunk.text}
+                            {chunk.isStressed && (
+                              <span className="block text-xs text-center mt-1 opacity-70">
+                                重音
+                              </span>
+                            )}
+                            {analysisResult?.chunkScores[index] && (
+                              <span className="block text-xs text-center mt-1 font-bold">
+                                {analysisResult.chunkScores[index].overall}分
+                              </span>
+                            )}
+                          </motion.span>
+                        </PronunciationTip>
                       ))}
+                    </div>
+                    <div className="flex items-center justify-center gap-1 mt-3 text-xs text-gray-500">
+                      <Lightbulb size={12} className="text-amber-500" />
+                      <span>悬停灯泡图标查看发音要诀和常见错误</span>
                     </div>
                   </div>
                 )}
