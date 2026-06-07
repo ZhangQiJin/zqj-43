@@ -12,7 +12,6 @@ import {
   Award,
 } from "lucide-react";
 import { useAppStore, TapRecord } from "@/store/useAppStore";
-import { scenes } from "@/data/scenes";
 
 export default function SelfTest() {
   const {
@@ -22,7 +21,10 @@ export default function SelfTest() {
     bpm,
     setBpm,
     addWrongSlice,
+    getAllScenes,
   } = useAppStore();
+
+  const scenes = getAllScenes();
   const [isTesting, setIsTesting] = useState(false);
   const [currentChunkIndex, setCurrentChunkIndex] = useState(-1);
   const [tapRecords, setTapRecords] = useState<TapRecord[]>([]);

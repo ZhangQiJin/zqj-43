@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { scenes, Sentence, Scene, Chunk } from "@/data/scenes";
 import { Dialogue, DialogueTurn } from "@/data/dialogues";
+import { getIconColor } from "@/data/icons";
 
 export type TabType = "rhythm" | "shadow" | "library" | "test" | "wrongWords" | "dailyChallenge" | "dialogue" | "favorites";
 
@@ -177,9 +178,43 @@ interface AppState extends ChallengeState {
   nextInQueue: () => void;
   prevInQueue: () => void;
   clearPracticeQueue: () => void;
+
+  customScenes: Scene[];
+  getAllScenes: () => Scene[];
+  addCustomScene: (scene: Omit<Scene, "id" | "isCustom" | "createdAt" | "sentences">) => Scene;
+  updateCustomScene: (sceneId: string, updates: Partial<Scene>) => void;
+  deleteCustomScene: (sceneId: string) => void;
+  addSentenceToScene: (sceneId: string, sentence: Omit<Sentence, "id">) => void;
+  updateSentenceInScene: (sceneId: string, sentenceId: string, updates: Partial<Sentence>) => void;
+  deleteSentenceFromScene: (sceneId: string, sentenceId: string) => void;
 }
 
 const FAVORITES_STORAGE_KEY = "silent-speaking-favorites";
+const CUSTOM_SCENES_STORAGE_KEY = "silent-speaking-custom-scenes";
+
+const loadCustomScenesFromStorage = (): Scene[] => {
+  try {
+    const stored = localStorage.getItem(CUSTOM_SCENES_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error("Failed to load custom scenes from localStorage:", e);
+  }
+  return [];
+};
+
+const saveCustomScenesToStorage = (customScenes: Scene[]) => {
+  try {
+    localStorage.setItem(CUSTOM_SCENES_STORAGE_KEY, JSON.stringify(customScenes));
+  } catch (e) {
+    console.error("Failed to save custom scenes to localStorage:", e);
+  }
+};
+
+const getAllScenes = (): Scene[] => {
+  return [...scenes, ...loadCustomScenesFromStorage()];
+};
 
 const loadFavoritesFromStorage = (): FavoriteSentence[] => {
   try {
@@ -250,6 +285,90 @@ export const useAppStore = create<AppState>((set, get) => ({
   practiceQueueIndex: 0,
   isPracticeQueueMode: false,
 
+  customScenes: loadCustomScenesFromStorage(),
+
+  getAllScenes: () => {
+    const state = get();
+    return [...scenes, ...state.customScenes];
+  },
+
+  addCustomScene: (sceneData) => {
+    const newScene: Scene = {
+      ...sceneData,
+      id: `custom-${Date.now()}`,
+      isCustom: true,
+      createdAt: Date.now(),
+      sentences: [],
+    };
+    set((state) => {
+      const updatedCustomScenes = [...state.customScenes, newScene];
+      saveCustomScenesToStorage(updatedCustomScenes);
+      return { customScenes: updatedCustomScenes };
+    });
+    return newScene;
+  },
+
+  updateCustomScene: (sceneId, updates) => {
+    set((state) => {
+      const updatedCustomScenes = state.customScenes.map((s) =>
+        s.id === sceneId ? { ...s, ...updates } : s
+      );
+      saveCustomScenesToStorage(updatedCustomScenes);
+      return { customScenes: updatedCustomScenes };
+    });
+  },
+
+  deleteCustomScene: (sceneId) => {
+    set((state) => {
+      const updatedCustomScenes = state.customScenes.filter((s) => s.id !== sceneId);
+      saveCustomScenesToStorage(updatedCustomScenes);
+      return { customScenes: updatedCustomScenes };
+    });
+  },
+
+  addSentenceToScene: (sceneId, sentenceData) => {
+    set((state) => {
+      const newSentence: Sentence = {
+        ...sentenceData,
+        id: `sentence-${Date.now()}`,
+      };
+      const updatedCustomScenes = state.customScenes.map((s) =>
+        s.id === sceneId ? { ...s, sentences: [...s.sentences, newSentence] } : s
+      );
+      saveCustomScenesToStorage(updatedCustomScenes);
+      return { customScenes: updatedCustomScenes };
+    });
+  },
+
+  updateSentenceInScene: (sceneId, sentenceId, updates) => {
+    set((state) => {
+      const updatedCustomScenes = state.customScenes.map((s) =>
+        s.id === sceneId
+          ? {
+              ...s,
+              sentences: s.sentences.map((sent) =>
+                sent.id === sentenceId ? { ...sent, ...updates } : sent
+              ),
+            }
+          : s
+      );
+      saveCustomScenesToStorage(updatedCustomScenes);
+      return { customScenes: updatedCustomScenes };
+    });
+  },
+
+  deleteSentenceFromScene: (sceneId, sentenceId) => {
+    set((state) => {
+      const updatedCustomScenes = state.customScenes.map((s) =>
+        s.id === sceneId
+          ? { ...s, sentences: s.sentences.filter((sent) => sent.id !== sentenceId) }
+          : s
+      );
+      saveCustomScenesToStorage(updatedCustomScenes);
+      return { customScenes: updatedCustomScenes };
+    });
+  },
+
   currentDailyChallenge: null,
   currentLevelIndex: 0,
   checkInRecords: [],
@@ -283,7 +402,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const allSentences: { sentence: Sentence; scene: Scene }[] = [];
-    scenes.forEach((scene) => {
+    get().getAllScenes().forEach((scene) => {
       scene.sentences.forEach((sentence) => {
         allSentences.push({ sentence, scene });
       });
@@ -428,8 +547,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedScene: scenes[0],
   selectedSentence: scenes[0].sentences[0],
   setSelectedScene: (sceneId) => {
-    const scene = scenes.find((s) => s.id === sceneId) || scenes[0];
-    set({ selectedScene: scene, selectedSentence: scene.sentences[0] });
+    const allScenes = get().getAllScenes();
+    const scene = allScenes.find((s) => s.id === sceneId) || scenes[0];
+    set({ selectedScene: scene, selectedSentence: scene.sentences[0] || null });
   },
   setSelectedSentence: (sentence) => set({ selectedSentence: sentence }),
 
@@ -574,7 +694,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (queue.length === 0) return;
     const safeIndex = Math.max(0, Math.min(startIndex, queue.length - 1));
     const startItem = queue[safeIndex];
-    const scene = scenes.find((s) => s.id === startItem.sceneId);
+    const scene = get().getAllScenes().find((s) => s.id === startItem.sceneId);
     if (!scene) return;
 
     set({
@@ -601,7 +721,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const nextItem = state.practiceQueue[nextIndex];
-    const scene = scenes.find((s) => s.id === nextItem.sceneId);
+    const scene = state.getAllScenes().find((s) => s.id === nextItem.sceneId);
     if (!scene) return;
 
     set({
@@ -622,7 +742,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (prevIndex < 0) return;
 
     const prevItem = state.practiceQueue[prevIndex];
-    const scene = scenes.find((s) => s.id === prevItem.sceneId);
+    const scene = state.getAllScenes().find((s) => s.id === prevItem.sceneId);
     if (!scene) return;
 
     set({

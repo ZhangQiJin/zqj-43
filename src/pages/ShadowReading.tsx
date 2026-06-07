@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, RotateCcw, Eye, EyeOff, Volume2, Mic, MicOff, Award, RefreshCw, Star, ListMusic, X } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
-import { scenes } from "@/data/scenes";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { analyzeRecording, type AnalysisResult, type ChunkScore } from "@/lib/audioAnalysis";
 import RadarChart from "@/components/RadarChart";
@@ -27,7 +26,10 @@ export default function ShadowReading() {
     prevInQueue,
     clearPracticeQueue,
     setPracticeQueueIndex,
+    getAllScenes,
   } = useAppStore();
+
+  const scenes = getAllScenes();
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [currentChunkIndex, setCurrentChunkIndex] = useState(-1);

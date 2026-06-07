@@ -47,24 +47,6 @@ export default function DialogueSimulation() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [currentTurnIndex]);
-
-  useEffect(() => {
-    if (selectedDialogue && currentTurnIndex > 0 && dialoguePhase !== "finished" && dialoguePhase !== "idle") {
-      playTurnAnimation();
-    }
-  }, [currentTurnIndex, selectedDialogue, dialoguePhase, playTurnAnimation]);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
   const calculateTurnDuration = (turn: { sentence: { chunks: { duration: number }[] } }) => {
     const speedMultiplier = 80 / bpm;
     return turn.sentence.chunks.reduce((sum, chunk) => sum + chunk.duration * speedMultiplier, 0);
@@ -96,6 +78,24 @@ export default function DialogueSimulation() {
       }
     }, delay);
   }, [currentTurn, isUserTurn, bpm, setDialoguePhase, setCurrentChunkIndexInTurn]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [currentTurnIndex]);
+
+  useEffect(() => {
+    if (selectedDialogue && currentTurnIndex > 0 && dialoguePhase !== "finished" && dialoguePhase !== "idle") {
+      playTurnAnimation();
+    }
+  }, [currentTurnIndex, selectedDialogue, dialoguePhase, playTurnAnimation]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const stopAnimation = useCallback(() => {
     if (timeoutRef.current) {

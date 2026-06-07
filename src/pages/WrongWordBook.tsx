@@ -12,7 +12,6 @@ import {
   Volume2,
 } from "lucide-react";
 import { useAppStore, WrongSlice } from "@/store/useAppStore";
-import { scenes } from "@/data/scenes";
 
 type SortOption = "deviation-desc" | "deviation-asc" | "date-desc" | "date-asc";
 
@@ -26,7 +25,10 @@ export default function WrongWordBook() {
     startWrongSlicePractice,
     setActiveTab,
     bpm,
+    getAllScenes,
   } = useAppStore();
+
+  const scenes = getAllScenes();
 
   const [selectedSceneFilter, setSelectedSceneFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("deviation-desc");

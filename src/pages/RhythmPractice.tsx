@@ -6,7 +6,6 @@ import RhythmBar from "@/components/RhythmBar";
 import Waveform from "@/components/Waveform";
 import RecordingControls from "@/components/RecordingControls";
 import { useAppStore } from "@/store/useAppStore";
-import { scenes } from "@/data/scenes";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 
@@ -34,7 +33,10 @@ export default function RhythmPractice() {
     nextInQueue,
     prevInQueue,
     clearPracticeQueue,
+    getAllScenes,
   } = useAppStore();
+
+  const scenes = getAllScenes();
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentChunkIndex, setLocalChunkIndex] = useState(-1);

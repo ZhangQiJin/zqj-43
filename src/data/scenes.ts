@@ -19,6 +19,8 @@ export interface Scene {
   icon: string;
   description: string;
   sentences: Sentence[];
+  isCustom?: boolean;
+  createdAt?: number;
 }
 
 export const scenes: Scene[] = [
