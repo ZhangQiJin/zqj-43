@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Clock, CheckCircle, Volume2 } from "lucide-react";
+import { X, Clock, CheckCircle, Volume2, VolumeX } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 
 export default function FocusModeTimer() {
@@ -15,9 +15,32 @@ export default function FocusModeTimer() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [exitProgress, setExitProgress] = useState(0);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [soundPlayed, setSoundPlayed] = useState(false);
+  const [soundSuccess, setSoundSuccess] = useState(false);
+
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!isFocusMode) {
+      setShowExitConfirm(false);
+      setExitProgress(0);
+      setShowCompleteModal(false);
+      setSoundPlayed(false);
+      setSoundSuccess(false);
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    }
+  }, [isFocusMode]);
 
   useEffect(() => {
     if (!isFocusMode) return;
@@ -30,21 +53,27 @@ export default function FocusModeTimer() {
   }, [isFocusMode, focusModeTimeLeft, setFocusModeTimeLeft]);
 
   useEffect(() => {
-    if (isFocusMode && focusModeTimeLeft === 0) {
+    if (isFocusMode && focusModeTimeLeft === 0 && !soundPlayed) {
       setShowCompleteModal(true);
-      playNotificationSound();
+      const success = playNotificationSound();
+      setSoundPlayed(true);
+      setSoundSuccess(success);
     }
-  }, [focusModeTimeLeft, isFocusMode]);
+  }, [focusModeTimeLeft, isFocusMode, soundPlayed]);
 
-  const playNotificationSound = useCallback(() => {
+  const playNotificationSound = useCallback((): boolean => {
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return false;
+
+      const audioContext = new AudioContext();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
+      oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
       oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
       oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
@@ -55,42 +84,84 @@ export default function FocusModeTimer() {
 
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.6);
+
+      setTimeout(() => {
+        audioContext.close();
+      }, 1000);
+
+      return true;
     } catch (e) {
-      console.log("Audio not supported");
+      console.log("Audio not supported or failed to play");
+      return false;
     }
   }, []);
 
-  const handleExitPressStart = useCallback(() => {
-    setExitProgress(0);
-    const startTime = Date.now();
+  const updateProgress = useCallback(() => {
+    const elapsed = performance.now() - startTimeRef.current;
     const duration = 2000;
+    const progress = Math.min(100, (elapsed / duration) * 100);
+    setExitProgress(progress);
 
-    progressIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(100, (elapsed / duration) * 100);
-      setExitProgress(progress);
-
-      if (progress >= 100) {
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = null;
-        }
-        stopFocusMode();
-        setShowExitConfirm(false);
-        setExitProgress(0);
+    if (progress >= 100) {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
-    }, 16);
+      stopFocusMode();
+      setShowExitConfirm(false);
+      setExitProgress(0);
+    } else {
+      animationFrameRef.current = requestAnimationFrame(updateProgress);
+    }
   }, [stopFocusMode]);
 
-  const handleExitPressEnd = useCallback(() => {
+  const handleExitPressStart = useCallback(() => {
+    setExitProgress(0);
+    startTimeRef.current = performance.now();
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
-    if (exitProgress < 100) {
-      setExitProgress(0);
+
+    animationFrameRef.current = requestAnimationFrame(updateProgress);
+  }, [updateProgress]);
+
+  const handleExitPressEnd = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
-  }, [exitProgress]);
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    setExitProgress((prev) => {
+      if (prev < 100) {
+        return 0;
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault();
+      handleExitPressStart();
+    },
+    [handleExitPressStart]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault();
+      handleExitPressEnd();
+    },
+    [handleExitPressEnd]
+  );
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -179,9 +250,10 @@ export default function FocusModeTimer() {
                   onMouseDown={handleExitPressStart}
                   onMouseUp={handleExitPressEnd}
                   onMouseLeave={handleExitPressEnd}
-                  onTouchStart={handleExitPressStart}
-                  onTouchEnd={handleExitPressEnd}
-                  className="relative w-full py-4 rounded-xl font-bold text-white overflow-hidden transition-all bg-gradient-to-r from-gray-400 to-gray-500"
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                  className="relative w-full py-4 rounded-xl font-bold text-white overflow-hidden transition-all bg-gradient-to-r from-gray-400 to-gray-500 select-none touch-none"
                 >
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-red-500 to-red-600"
@@ -237,9 +309,22 @@ export default function FocusModeTimer() {
                 太棒了！你已经专注了 {focusModeDuration} 分钟，休息一下吧！
               </p>
 
-              <div className="flex items-center justify-center gap-2 mb-6 p-4 bg-green-50 rounded-xl">
-                <Volume2 size={18} className="text-green-600" />
-                <span className="text-sm text-green-700">提示音已播放</span>
+              <div
+                className={`flex items-center justify-center gap-2 mb-6 p-4 rounded-xl ${
+                  soundSuccess ? "bg-green-50" : "bg-gray-50"
+                }`}
+              >
+                {soundSuccess ? (
+                  <>
+                    <Volume2 size={18} className="text-green-600" />
+                    <span className="text-sm text-green-700">提示音已播放</span>
+                  </>
+                ) : (
+                  <>
+                    <VolumeX size={18} className="text-gray-400" />
+                    <span className="text-sm text-gray-500">提示音未播放（浏览器限制）</span>
+                  </>
+                )}
               </div>
 
               <button
