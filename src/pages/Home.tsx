@@ -1,11 +1,14 @@
 import { motion } from "framer-motion";
-import { Mic, BookOpen, Library, BarChart3, VolumeX, BookX } from "lucide-react";
+import { Mic, BookOpen, Library, BarChart3, VolumeX, BookX, Flame } from "lucide-react";
 import { useAppStore, TabType } from "@/store/useAppStore";
 import RhythmPractice from "./RhythmPractice";
 import ShadowReading from "./ShadowReading";
 import SceneLibrary from "./SceneLibrary";
 import SelfTest from "./SelfTest";
 import WrongWordBook from "./WrongWordBook";
+import DailyChallenge from "./DailyChallenge";
+import CheckInCalendar from "@/components/CheckInCalendar";
+import AchievementModal from "@/components/AchievementModal";
 
 const tabs: { id: TabType; label: string; icon: React.ReactNode; color: string }[] = [
   {
@@ -38,6 +41,12 @@ const tabs: { id: TabType; label: string; icon: React.ReactNode; color: string }
     icon: <BookX size={20} />,
     color: "rose",
   },
+  {
+    id: "dailyChallenge",
+    label: "每日挑战",
+    icon: <Flame size={20} />,
+    color: "orange",
+  },
 ];
 
 const colorClasses: Record<string, { bg: string; text: string; border: string }> = {
@@ -69,7 +78,7 @@ const colorClasses: Record<string, { bg: string; text: string; border: string }>
 };
 
 export default function Home() {
-  const { activeTab, setActiveTab } = useAppStore();
+  const { activeTab, setActiveTab, currentDailyChallenge, consecutiveDays } = useAppStore();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -83,6 +92,8 @@ export default function Home() {
         return <SelfTest />;
       case "wrongWords":
         return <WrongWordBook />;
+      case "dailyChallenge":
+        return <DailyChallenge />;
       default:
         return <RhythmPractice />;
     }
@@ -157,6 +168,70 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {activeTab !== "dailyChallenge" && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setActiveTab("dailyChallenge")}
+                className="lg:col-span-2 bg-gradient-to-r from-orange-500 to-rose-500 rounded-2xl p-6 text-white shadow-lg cursor-pointer relative overflow-hidden"
+              >
+                <div className="absolute right-0 top-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute right-20 bottom-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2" />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                      <Flame size={28} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold">每日挑战</h3>
+                      <p className="text-white/80 text-sm">完成挑战，赢取今日评分</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6 mt-4">
+                    <div>
+                      <p className="text-3xl font-bold">{consecutiveDays}</p>
+                      <p className="text-white/70 text-xs">连续打卡</p>
+                    </div>
+                    {currentDailyChallenge && (
+                      <>
+                        <div>
+                          <p className="text-3xl font-bold">
+                            {currentDailyChallenge.levels.filter((l) => l.completed).length}/
+                            {currentDailyChallenge.levels.length}
+                          </p>
+                          <p className="text-white/70 text-xs">今日进度</p>
+                        </div>
+                        <div>
+                          <p className="text-3xl font-bold">
+                            {currentDailyChallenge.grade || "-"}
+                          </p>
+                          <p className="text-white/70 text-xs">今日评级</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2 text-white/90 text-sm">
+                    <span>立即挑战</span>
+                    <span>→</span>
+                  </div>
+                </div>
+              </motion.div>
+
+              <div className="lg:col-span-1">
+                <CheckInCalendar />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
@@ -167,6 +242,8 @@ export default function Home() {
           {renderContent()}
         </motion.div>
       </main>
+
+      <AchievementModal />
 
       <footer className="mt-16 py-8 border-t border-gray-200 bg-white/50">
         <div className="max-w-7xl mx-auto px-4 text-center">

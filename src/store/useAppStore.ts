@@ -1,7 +1,56 @@
 import { create } from "zustand";
 import { scenes, Sentence, Scene, Chunk } from "@/data/scenes";
 
-export type TabType = "rhythm" | "shadow" | "library" | "test" | "wrongWords";
+export type TabType = "rhythm" | "shadow" | "library" | "test" | "wrongWords" | "dailyChallenge";
+
+export interface ChallengeLevel {
+  id: number;
+  sentence: Sentence;
+  scene: Scene;
+  requiredAccuracy: number;
+  completed: boolean;
+  score: number | null;
+  completedAt: number | null;
+}
+
+export interface DailyChallenge {
+  date: string;
+  levels: ChallengeLevel[];
+  completed: boolean;
+  totalScore: number | null;
+  grade: string | null;
+  completedAt: number | null;
+}
+
+export interface CheckInRecord {
+  date: string;
+  score: number;
+  completedAt: number;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlockedAt: number | null;
+}
+
+interface ChallengeState {
+  currentDailyChallenge: DailyChallenge | null;
+  currentLevelIndex: number;
+  checkInRecords: CheckInRecord[];
+  consecutiveDays: number;
+  achievements: Achievement[];
+  showAchievementModal: Achievement | null;
+  generateDailyChallenge: () => void;
+  setCurrentLevelIndex: (index: number) => void;
+  completeLevel: (levelId: number, score: number, accuracy: number) => boolean;
+  completeDailyChallenge: () => void;
+  checkAndUnlockAchievements: () => void;
+  closeAchievementModal: () => void;
+}
 
 export interface TapRecord {
   index: number;
@@ -20,7 +69,7 @@ export interface WrongSlice {
   addedAt: number;
 }
 
-interface AppState {
+interface AppState extends ChallengeState {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
 
@@ -63,9 +112,222 @@ interface AppState {
   exitWrongSlicePractice: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+const getTodayString = () => {
+  const today = new Date();
+  return today.toISOString().split("T")[0];
+};
+
+const getGrade = (score: number) => {
+  if (score >= 90) return "S";
+  if (score >= 80) return "A";
+  if (score >= 70) return "B";
+  if (score >= 60) return "C";
+  return "D";
+};
+
+const calculateConsecutiveDays = (records: CheckInRecord[]) => {
+  if (records.length === 0) return 0;
+
+  const sortedDates = [...new Set(records.map((r) => r.date))].sort().reverse();
+  let consecutive = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < sortedDates.length; i++) {
+    const recordDate = new Date(sortedDates[i]);
+    recordDate.setHours(0, 0, 0, 0);
+
+    const expectedDate = new Date(today);
+    expectedDate.setDate(today.getDate() - i);
+    expectedDate.setHours(0, 0, 0, 0);
+
+    if (recordDate.getTime() === expectedDate.getTime()) {
+      consecutive++;
+    } else {
+      break;
+    }
+  }
+
+  return consecutive;
+};
+
+export const useAppStore = create<AppState>((set, get) => ({
   activeTab: "rhythm",
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  currentDailyChallenge: null,
+  currentLevelIndex: 0,
+  checkInRecords: [],
+  consecutiveDays: 0,
+  achievements: [
+    {
+      id: "streak_7",
+      name: "坚持一周",
+      description: "连续打卡 7 天",
+      icon: "Trophy",
+      unlocked: false,
+      unlockedAt: null,
+    },
+    {
+      id: "streak_30",
+      name: "月度达人",
+      description: "连续打卡 30 天",
+      icon: "Crown",
+      unlocked: false,
+      unlockedAt: null,
+    },
+  ],
+  showAchievementModal: null,
+
+  generateDailyChallenge: () => {
+    const today = getTodayString();
+    const existingChallenge = get().currentDailyChallenge;
+
+    if (existingChallenge && existingChallenge.date === today) {
+      return;
+    }
+
+    const allSentences: { sentence: Sentence; scene: Scene }[] = [];
+    scenes.forEach((scene) => {
+      scene.sentences.forEach((sentence) => {
+        allSentences.push({ sentence, scene });
+      });
+    });
+
+    const shuffled = [...allSentences].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, 5);
+
+    const levels: ChallengeLevel[] = selected.map((item, index) => ({
+      id: index,
+      sentence: item.sentence,
+      scene: item.scene,
+      requiredAccuracy: 80,
+      completed: false,
+      score: null,
+      completedAt: null,
+    }));
+
+    set({
+      currentDailyChallenge: {
+        date: today,
+        levels,
+        completed: false,
+        totalScore: null,
+        grade: null,
+        completedAt: null,
+      },
+      currentLevelIndex: 0,
+    });
+  },
+
+  setCurrentLevelIndex: (index) => set({ currentLevelIndex: index }),
+
+  completeLevel: (levelId, score, accuracy) => {
+    const state = get();
+    const challenge = state.currentDailyChallenge;
+    if (!challenge) return false;
+
+    const level = challenge.levels.find((l) => l.id === levelId);
+    if (!level || level.completed) return false;
+
+    if (accuracy < level.requiredAccuracy) {
+      return false;
+    }
+
+    const updatedLevels = challenge.levels.map((l) =>
+      l.id === levelId
+        ? { ...l, completed: true, score, completedAt: Date.now() }
+        : l
+    );
+
+    const nextIndex = challenge.levels.findIndex((l) => !l.completed);
+
+    set({
+      currentDailyChallenge: {
+        ...challenge,
+        levels: updatedLevels,
+      },
+      currentLevelIndex: nextIndex !== -1 ? nextIndex : state.currentLevelIndex,
+    });
+
+    return true;
+  },
+
+  completeDailyChallenge: () => {
+    const state = get();
+    const challenge = state.currentDailyChallenge;
+    if (!challenge || challenge.completed) return;
+
+    const allCompleted = challenge.levels.every((l) => l.completed);
+    if (!allCompleted) return;
+
+    const totalScore = Math.round(
+      challenge.levels.reduce((sum, l) => sum + (l.score || 0), 0) /
+        challenge.levels.length
+    );
+
+    const today = getTodayString();
+    const newRecord: CheckInRecord = {
+      date: today,
+      score: totalScore,
+      completedAt: Date.now(),
+    };
+
+    const existingRecords = state.checkInRecords.filter(
+      (r) => r.date !== today
+    );
+    const updatedRecords = [...existingRecords, newRecord];
+    const consecutive = calculateConsecutiveDays(updatedRecords);
+
+    set({
+      currentDailyChallenge: {
+        ...challenge,
+        completed: true,
+        totalScore,
+        grade: getGrade(totalScore),
+        completedAt: Date.now(),
+      },
+      checkInRecords: updatedRecords,
+      consecutiveDays: consecutive,
+    });
+
+    get().checkAndUnlockAchievements();
+  },
+
+  checkAndUnlockAchievements: () => {
+    const state = get();
+    const { consecutiveDays, achievements } = state;
+    let unlockedAchievement: Achievement | null = null;
+
+    const updatedAchievements = achievements.map((achievement) => {
+      if (achievement.unlocked) return achievement;
+
+      let shouldUnlock = false;
+      if (achievement.id === "streak_7" && consecutiveDays >= 7) {
+        shouldUnlock = true;
+      } else if (achievement.id === "streak_30" && consecutiveDays >= 30) {
+        shouldUnlock = true;
+      }
+
+      if (shouldUnlock) {
+        unlockedAchievement = { ...achievement, unlocked: true, unlockedAt: Date.now() };
+        return unlockedAchievement;
+      }
+
+      return achievement;
+    });
+
+    if (unlockedAchievement) {
+      set({
+        achievements: updatedAchievements,
+        showAchievementModal: unlockedAchievement,
+      });
+    } else {
+      set({ achievements: updatedAchievements });
+    }
+  },
+
+  closeAchievementModal: () => set({ showAchievementModal: null }),
 
   selectedScene: scenes[0],
   selectedSentence: scenes[0].sentences[0],
@@ -125,7 +387,7 @@ export const useAppStore = create<AppState>((set) => ({
     set({ highlightedChunkIndex: index }),
   setOriginalBpm: (bpm) => set({ originalBpm: bpm }),
   startWrongSlicePractice: (highlightedIndex, currentBpm) =>
-    set((state) => {
+    set(() => {
       const newBpm = Math.max(40, Math.round(currentBpm * 0.8));
       return {
         isWrongSlicePractice: true,
